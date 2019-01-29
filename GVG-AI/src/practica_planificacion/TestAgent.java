@@ -27,7 +27,7 @@ public class TestAgent extends BaseAgent{
     
     @Override
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer){
-        
+        //System.out.println(elapsedTimer.remainingTimeMillis());
         if (iter == 0){
             
             // Observation Grid
@@ -113,7 +113,8 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
-            aStar(7, 9, stateObs);
+            aStar(7, 9, stateObs, elapsedTimer);
+            System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
                 Thread.sleep(1000);
@@ -123,12 +124,12 @@ public class TestAgent extends BaseAgent{
         iter++;
         }
     
-        Types.ACTIONS action = Types.ACTIONS.ACTION_NIL;
+        Types.ACTIONS action = informacionPlan.plan.poll();
         
         return action;
     }
     
-    private void aStar(int xGema, int yGema, StateObservation stateObs) {
+    private void aStar(int xGema, int yGema, StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         // Cola de nodos abiertos
         PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
                 (CasillaCamino c1, CasillaCamino c2) -> c1.costeF - c2.costeF);
@@ -141,20 +142,24 @@ public class TestAgent extends BaseAgent{
         
         StateObservation estadoActual;
         PlayerObservation posJugador = this.getPlayer(stateObs);
+        final PlayerObservation posInicial = this.getPlayer(stateObs);
         ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
+        
+        final int numFilas = observacionNivel.length,
+                  numColumnas = observacionNivel[0].length,
+                  numAcciones = 4;
+        boolean mapaExplorado[][][] = new boolean[numFilas][numColumnas][numAcciones];
+        
+        for (int i = 0; i < numFilas; i++) {
+            for (int j = 0; j < numColumnas; j++) {
+                for (int k = 0; k < numAcciones; k++) {
+                    mapaExplorado[i][j][k] = false;
+                }
+            }
+        }
         
         // Distancia recorrida desde la casilla inicial
         int distanciaRecorrida = 0;
-        ArrayList<ArrayList<Boolean>> mapaExplorado = new ArrayList<>(observacionNivel[0].length);
-        System.out.println("Filas: " + observacionNivel[0].length + " Columnas " + observacionNivel.length);
-        
-        for (int i = 0; i < observacionNivel[0].length; i++) {
-            mapaExplorado.add(new ArrayList<>(observacionNivel.length));
-            
-            for (int j = 0; j < observacionNivel.length; j++) {
-                mapaExplorado.get(i).add(false);
-            }
-        }
         
         // Acciones a aplicar
         Types.ACTIONS[] acciones = {Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_RIGHT, 
@@ -168,76 +173,88 @@ public class TestAgent extends BaseAgent{
                                             Types.ACTIONS.ACTION_NIL, stateObs, null));
         
         while (!listaAbiertos.isEmpty() && !gemaEncontrada) {
-            System.out.println("bucle");
-            distanciaRecorrida++;
+                       
             nodoActual = listaAbiertos.poll();
             
             observacionNivel = this.getObservationGrid(nodoActual.estado);
             
             posJugador = this.getPlayer(nodoActual.estado);
+            distanciaRecorrida = posJugador.getManhattanDistance(posInicial);
+            System.out.println(nodoActual.costeF);
             int xJugador = posJugador.getX(),
                 yJugador = posJugador.getY();
             
-            mapaExplorado.get(yJugador).set(xJugador, true);
-            
             if (posJugador.getManhattanDistance(gema) == 0) {
+                System.out.println("Encontrada");
                 gemaEncontrada = true;
             }
             
             if (!gemaEncontrada) {
-                System.out.println("condicion");
                 int yRocaSup = yJugador - 2 < 0 ? 0 : yJugador - 2;
-                System.out.println(observacionNivel[yRocaSup][xJugador].get(0).getType());
-                System.out.println("Roca: "+ yRocaSup+", "+xJugador);
                 System.out.println(posJugador);
                 
                 boolean rocaIzquierdaSup = observacionNivel[xJugador - 1][yJugador - 1].get(0).getType().equals(ObservationType.BOULDER),
                         rocaDerechaSup = observacionNivel[xJugador - 1][yJugador + 1].get(0).getType().equals(ObservationType.BOULDER),
-                        rocaSup = observacionNivel[yRocaSup][yJugador].get(0).getType().equals(ObservationType.BOULDER);
-                
-                for (Types.ACTIONS accion : acciones) {
-                   // System.out.println("for interno");
+                        rocaSup = observacionNivel[xJugador][yRocaSup].get(0).getType().equals(ObservationType.BOULDER);
+                System.out.println(elapsedTimer.remainingTimeMillis());
+                for (int i = 0; i < numAcciones; i++) {
+                    Types.ACTIONS accion = acciones[i];
+                    
                     boolean saltarAccion = false;
                     estadoActual = nodoActual.estado.copy();
                   
                     if (accion.equals(Types.ACTIONS.ACTION_UP) && rocaSup
                         || accion.equals(Types.ACTIONS.ACTION_LEFT) && rocaIzquierdaSup
                         || accion.equals(Types.ACTIONS.ACTION_RIGHT) && rocaDerechaSup) {
-                      //  System.out.println("Dentro del if");
+                        System.out.println("saltamos");
                         saltarAccion = true;
                     }
                     
                     if (!saltarAccion) {
+                         
                         estadoActual.advance(accion);
+                         
                         
                         PlayerObservation nuevaPosJugador = this.getPlayer(estadoActual);
                         
-                       // System.out.println("Antigua: " + posJugador );
-                       // System.out.println("Nueva: "+nuevaPosJugador);
-                        
-                        boolean mismaPosicion = posJugador.equals(nuevaPosJugador) && posJugador.getOrientation().equals(nuevaPosJugador.getOrientation());
-                        
+                        boolean mismaPosicion = posJugador.equals(nuevaPosJugador),
+                                mismaOrientacion = posJugador.getOrientation().equals(nuevaPosJugador.getOrientation()),
+                                addCasilla = false;
                         if (!mismaPosicion) {
+                            mapaExplorado[nuevaPosJugador.getX()][nuevaPosJugador.getY()][(i+2)%numAcciones] = true;
+                            mapaExplorado[xJugador][yJugador][i] = true;
+                            addCasilla = true;
+                        } else if (!mismaOrientacion && !mapaExplorado[xJugador][yJugador][i]) {
+                            mapaExplorado[xJugador][yJugador][i] = true;
+                            addCasilla = true;
+                        }
+                        //System.out.println(elapsedTimer.remainingTimeMillis());
+                        
+                        if (addCasilla) {
                             listaAbiertos.add(new CasillaCamino(distanciaRecorrida, 
                                     nuevaPosJugador.getManhattanDistance(gema), accion, 
                                     estadoActual, nodoActual));
-                            mapaExplorado.get(nuevaPosJugador.getY()).set(nuevaPosJugador.getX(), true);
                         }                        
                     }                    
                 }
+                System.out.println(elapsedTimer.remainingTimeMillis());
             }            
             
             listaExplorados.add(nodoActual);
         }
-        System.out.println("Hasta aqui bien3");
+        
         CasillaCamino recorrido = listaExplorados.get(listaExplorados.size() - 1);
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
-        informacionPlan.distancia = distanciaRecorrida;
+        if (gemaEncontrada) {
+            informacionPlan.distancia = distanciaRecorrida;
         
-        while (recorrido.padre != null) {
-            informacionPlan.plan.addFirst(recorrido.accion);
-            recorrido = recorrido.padre;
-        }        
+            while (recorrido.padre != null) {
+                System.out.println(recorrido.accion);
+                informacionPlan.plan.addFirst(recorrido.accion);
+                recorrido = recorrido.padre;
+            }
+        }
+                
     }
 }
