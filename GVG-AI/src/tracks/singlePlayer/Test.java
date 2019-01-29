@@ -55,7 +55,7 @@ public class Test {
                 
                 // Juego elegido -> el 11 (y también el 10)
                 
-                boolean juego_yo = true;
+                boolean juego_yo = false;
                 
 		// Game and level to play
 		int gameIdx = 11; // 39 para el de los incendios
