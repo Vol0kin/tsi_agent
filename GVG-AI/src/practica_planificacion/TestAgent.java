@@ -113,7 +113,7 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
-            aStar(1, 4, stateObs, elapsedTimer);
+            aStar(7, 9, stateObs, elapsedTimer);
             System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
@@ -289,10 +289,16 @@ public class TestAgent extends BaseAgent{
             informacionPlan.distancia = distanciaRecorrida;
         
             while (recorrido.padre != null) {
-                //System.out.println(recorrido.accion);
+                // Aniadir casillas recorridas
+                informacionPlan.listaCasillas.add(0, recorrido.observacion);
+                
+                // Aniadir secuencia de acciones realizadas
                 informacionPlan.plan.addAll(0, recorrido.acciones);
                 recorrido = recorrido.padre;
             }
+            
+            // Aniadir casilla inicial
+            informacionPlan.listaCasillas.add(0, recorrido.observacion);
         }
                 
     }
