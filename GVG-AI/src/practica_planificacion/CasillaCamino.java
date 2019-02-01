@@ -5,8 +5,10 @@
  */
 package practica_planificacion;
 
-import ontology.Types.ACTIONS;
+import ontology.Types;
 import core.game.StateObservation;
+
+import java.util.LinkedList;
 
 /**
  *
@@ -16,17 +18,20 @@ class CasillaCamino {
     int costeG;
     int costeH;
     int costeF;
-    ACTIONS accion;
-    StateObservation estado;
+    Orientation orientacion;
+    LinkedList<Types.ACTIONS> acciones;
+    Observation observacion;
     CasillaCamino padre;
     
-    CasillaCamino(int costeG, int costeH, ACTIONS accion,
-                  StateObservation estado, CasillaCamino padre) {
+    CasillaCamino(int costeG, int costeH, Orientation orientacion,
+                  LinkedList<Types.ACTIONS> acciones, Observation observacion,
+                  CasillaCamino padre) {
         this.costeG = costeG;
         this.costeH = costeH;
         this.costeF = costeG + costeH;
-        this.accion = accion;
-        this.estado = estado;
+        this.orientacion = orientacion;
+        this.acciones = acciones;
+        this.observacion = observacion;
         this.padre = padre;
     }
 }

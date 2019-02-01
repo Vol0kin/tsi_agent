@@ -113,7 +113,7 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
-            aStar(7, 9, stateObs, elapsedTimer);
+            aStar(1, 4, stateObs, elapsedTimer);
             System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
@@ -140,105 +140,144 @@ public class TestAgent extends BaseAgent{
         // Representa el nodo que se explora a continuacion
         CasillaCamino nodoActual;
         
-        StateObservation estadoActual;
+        final ObservationType muro = ObservationType.WALL,
+                              roca = ObservationType.BOULDER;
+        
+        
         PlayerObservation posJugador = this.getPlayer(stateObs);
         final PlayerObservation posInicial = this.getPlayer(stateObs);
         ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
+        Observation observacionActual;
         
         final int numFilas = observacionNivel.length,
-                  numColumnas = observacionNivel[0].length,
-                  numAcciones = 4;
-        boolean mapaExplorado[][][] = new boolean[numFilas][numColumnas][numAcciones];
+                  numColumnas = observacionNivel[0].length;
+        
+        boolean mapaExplorado[][] = new boolean[numFilas][numColumnas];
         
         for (int i = 0; i < numFilas; i++) {
             for (int j = 0; j < numColumnas; j++) {
-                for (int k = 0; k < numAcciones; k++) {
-                    mapaExplorado[i][j][k] = false;
-                }
+                mapaExplorado[i][j] = false;
             }
         }
         
         // Distancia recorrida desde la casilla inicial
-        int distanciaRecorrida = 0;
-        
-        // Acciones a aplicar
-        Types.ACTIONS[] acciones = {Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_RIGHT, 
-                                    Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_LEFT};
+        int distanciaRecorrida = 0;       
         
         // Gema a conseguir
-        final Observation gema = new Observation(xGema, yGema, ObservationType.GEM);
+        final Observation gema = observacionNivel[xGema][yGema].get(0);
         boolean gemaEncontrada = false;
         
         listaAbiertos.add(new CasillaCamino(distanciaRecorrida, gema.getManhattanDistance(posJugador),
-                                            Types.ACTIONS.ACTION_NIL, stateObs, null));
+                                            posJugador.getOrientation(), null, posJugador, null));
+        
+        mapaExplorado[posJugador.getX()][posJugador.getY()] = true;
         
         while (!listaAbiertos.isEmpty() && !gemaEncontrada) {
                        
             nodoActual = listaAbiertos.poll();
             
-            observacionNivel = this.getObservationGrid(nodoActual.estado);
+            observacionActual = nodoActual.observacion;
             
-            posJugador = this.getPlayer(nodoActual.estado);
-            distanciaRecorrida = posJugador.getManhattanDistance(posInicial);
-            System.out.println(nodoActual.costeF);
-            int xJugador = posJugador.getX(),
-                yJugador = posJugador.getY();
+            int xActual = observacionActual.getX(),
+                yActual = observacionActual.getY();
             
-            if (posJugador.getManhattanDistance(gema) == 0) {
-                System.out.println("Encontrada");
+            if (gema.equals(observacionActual)) {
                 gemaEncontrada = true;
-            }
-            
-            if (!gemaEncontrada) {
-                int yRocaSup = yJugador - 2 < 0 ? 0 : yJugador - 2;
-                System.out.println(posJugador);
+            } else {
                 
-                boolean rocaIzquierdaSup = observacionNivel[xJugador - 1][yJugador - 1].get(0).getType().equals(ObservationType.BOULDER),
-                        rocaDerechaSup = observacionNivel[xJugador - 1][yJugador + 1].get(0).getType().equals(ObservationType.BOULDER),
-                        rocaSup = observacionNivel[xJugador][yRocaSup].get(0).getType().equals(ObservationType.BOULDER);
-                System.out.println(elapsedTimer.remainingTimeMillis());
-                for (int i = 0; i < numAcciones; i++) {
-                    Types.ACTIONS accion = acciones[i];
+                LinkedList<Types.ACTIONS> acciones;
+                
+                int yArriba = yActual - 1,
+                    yAbajo = yActual + 1,
+                    xIzquierda = xActual - 1,
+                    xDerecha = xActual + 1;
+            
+                Observation casillaArriba = observacionNivel[xActual][yArriba].get(0),
+                            casillaAbajo = observacionNivel[xActual][yAbajo].get(0),
+                            casillaDerecha = observacionNivel[xDerecha][yActual].get(0),
+                            casillaIzquierda = observacionNivel[xIzquierda][yActual].get(0);
+                
+                int yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1;
+                
+                // Descendiente superior
+                if (!mapaExplorado[xActual][yArriba] &&
+                    !casillaArriba.getType().equals(muro) && !casillaArriba.getType().equals(roca) &&
+                    !observacionNivel[xActual][yArribaRoca].get(0).getType().equals(roca)) {
                     
-                    boolean saltarAccion = false;
-                    estadoActual = nodoActual.estado.copy();
-                  
-                    if (accion.equals(Types.ACTIONS.ACTION_UP) && rocaSup
-                        || accion.equals(Types.ACTIONS.ACTION_LEFT) && rocaIzquierdaSup
-                        || accion.equals(Types.ACTIONS.ACTION_RIGHT) && rocaDerechaSup) {
-                        System.out.println("saltamos");
-                        saltarAccion = true;
+                
+                    acciones = new LinkedList<>();
+                    acciones.addFirst(Types.ACTIONS.ACTION_UP);
+                    
+                    if (!nodoActual.orientacion.equals(Orientation.N)) {
+                        acciones.addFirst(Types.ACTIONS.ACTION_UP);
                     }
                     
-                    if (!saltarAccion) {
-                         
-                        estadoActual.advance(accion);
-                         
-                        
-                        PlayerObservation nuevaPosJugador = this.getPlayer(estadoActual);
-                        
-                        boolean mismaPosicion = posJugador.equals(nuevaPosJugador),
-                                mismaOrientacion = posJugador.getOrientation().equals(nuevaPosJugador.getOrientation()),
-                                addCasilla = false;
-                        if (!mismaPosicion) {
-                            mapaExplorado[nuevaPosJugador.getX()][nuevaPosJugador.getY()][(i+2)%numAcciones] = true;
-                            mapaExplorado[xJugador][yJugador][i] = true;
-                            addCasilla = true;
-                        } else if (!mismaOrientacion && !mapaExplorado[xJugador][yJugador][i]) {
-                            mapaExplorado[xJugador][yJugador][i] = true;
-                            addCasilla = true;
-                        }
-                        //System.out.println(elapsedTimer.remainingTimeMillis());
-                        
-                        if (addCasilla) {
-                            listaAbiertos.add(new CasillaCamino(distanciaRecorrida, 
-                                    nuevaPosJugador.getManhattanDistance(gema), accion, 
-                                    estadoActual, nodoActual));
-                        }                        
-                    }                    
+                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                                                        gema.getManhattanDistance(observacionActual),
+                                                        Orientation.N, acciones, casillaArriba, nodoActual));
                 }
-                System.out.println(elapsedTimer.remainingTimeMillis());
-            }            
+                
+                mapaExplorado[xActual][yArriba] = true;
+                
+                // Descendiente inferior
+                if (!mapaExplorado[xActual][yAbajo] &&
+                    !casillaAbajo.getType().equals(muro) && !casillaAbajo.getType().equals(roca)) {
+                
+                    acciones = new LinkedList<>();
+                    acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
+                    
+                    if (!nodoActual.orientacion.equals(Orientation.S)) {
+                        acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
+                    }
+                    
+                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                                                        gema.getManhattanDistance(observacionActual),
+                                                        Orientation.S, acciones, casillaAbajo, nodoActual));
+                }
+                
+                mapaExplorado[xActual][yAbajo] = true;
+                
+                // Descendiente izquierdo
+                if (!mapaExplorado[xIzquierda][yActual] &&
+                    !casillaIzquierda.getType().equals(muro) && !casillaIzquierda.getType().equals(roca) &&
+                    !observacionNivel[xIzquierda][yArriba].get(0).getType().equals(roca)) {
+                    
+                
+                    acciones = new LinkedList<>();
+                    acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
+                    
+                    if (!nodoActual.orientacion.equals(Orientation.W)) {
+                        acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
+                    }
+                    
+                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                                                        gema.getManhattanDistance(observacionActual),
+                                                        Orientation.W, acciones, casillaIzquierda, nodoActual));
+                }
+                
+                mapaExplorado[xIzquierda][yActual] = true;
+                
+                // Descendiente derecho
+                if (!mapaExplorado[xDerecha][yActual] &&
+                    !casillaDerecha.getType().equals(muro) && !casillaDerecha.getType().equals(roca) &&
+                    !observacionNivel[xDerecha][yArriba].get(0).getType().equals(roca)) {
+                    
+                
+                    acciones = new LinkedList<>();
+                    acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
+                    
+                    if (!nodoActual.orientacion.equals(Orientation.E)) {
+                        acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
+                    }
+                    
+                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                                                        gema.getManhattanDistance(observacionActual),
+                                                        Orientation.E, acciones, casillaDerecha, nodoActual));
+                }
+                
+                mapaExplorado[xDerecha][yActual] = true;
+                
+            }                  
             
             listaExplorados.add(nodoActual);
         }
@@ -250,8 +289,8 @@ public class TestAgent extends BaseAgent{
             informacionPlan.distancia = distanciaRecorrida;
         
             while (recorrido.padre != null) {
-                System.out.println(recorrido.accion);
-                informacionPlan.plan.addFirst(recorrido.accion);
+                //System.out.println(recorrido.accion);
+                informacionPlan.plan.addAll(0, recorrido.acciones);
                 recorrido = recorrido.padre;
             }
         }
