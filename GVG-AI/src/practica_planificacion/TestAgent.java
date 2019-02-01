@@ -286,7 +286,7 @@ public class TestAgent extends BaseAgent{
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
         if (gemaEncontrada) {
-            informacionPlan.distancia = distanciaRecorrida;
+            informacionPlan.distancia = posInicial.getManhattanDistance(gema);
         
             while (recorrido.padre != null) {
                 // Aniadir casillas recorridas
@@ -299,7 +299,6 @@ public class TestAgent extends BaseAgent{
             
             // Aniadir casilla inicial
             informacionPlan.listaCasillas.add(0, recorrido.observacion);
-        }
-                
+        }                
     }
 }
