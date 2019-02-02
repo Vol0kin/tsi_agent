@@ -113,7 +113,7 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
-            aStar(7, 9, stateObs, elapsedTimer);
+            pathFinder(7, 9, stateObs);
             System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
@@ -129,13 +129,19 @@ public class TestAgent extends BaseAgent{
         return action;
     }
     
-    private void aStar(int xGema, int yGema, StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
+    private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
         // Cola de nodos abiertos
         PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
                 (CasillaCamino c1, CasillaCamino c2) -> c1.costeF - c2.costeF);
         
-        // Lista de nodos explorados
+        // Lista de nodos explorados (cerrados)
         ArrayList<CasillaCamino> listaExplorados = new ArrayList<>();
+        
+        // Observacion del mapa
+        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
+        
+        // Observacion actual a explorar
+        Observation observacionActual;
         
         // Representa el nodo que se explora a continuacion
         CasillaCamino nodoActual;
@@ -143,15 +149,16 @@ public class TestAgent extends BaseAgent{
         final ObservationType muro = ObservationType.WALL,
                               roca = ObservationType.BOULDER;
         
-        
-        PlayerObservation posJugador = this.getPlayer(stateObs);
+        // Posicion inicial del jugador
         final PlayerObservation posInicial = this.getPlayer(stateObs);
-        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
-        Observation observacionActual;
+        
+        // Objetivo a encontrar
+        final Observation objetivo = observacionNivel[xObjetivo][yObjetivo].get(0);
         
         final int numFilas = observacionNivel.length,
                   numColumnas = observacionNivel[0].length;
         
+        // Mapa de casillas exploradas
         boolean mapaExplorado[][] = new boolean[numFilas][numColumnas];
         
         for (int i = 0; i < numFilas; i++) {
@@ -160,19 +167,14 @@ public class TestAgent extends BaseAgent{
             }
         }
         
-        // Distancia recorrida desde la casilla inicial
-        int distanciaRecorrida = 0;       
+        boolean objetivoEncontrado = false;
         
-        // Gema a conseguir
-        final Observation gema = observacionNivel[xGema][yGema].get(0);
-        boolean gemaEncontrada = false;
+        listaAbiertos.add(new CasillaCamino(0, objetivo.getManhattanDistance(posInicial),
+                                            posInicial.getOrientation(), null, posInicial, null));
         
-        listaAbiertos.add(new CasillaCamino(distanciaRecorrida, gema.getManhattanDistance(posJugador),
-                                            posJugador.getOrientation(), null, posJugador, null));
+        mapaExplorado[posInicial.getX()][posInicial.getY()] = true;
         
-        mapaExplorado[posJugador.getX()][posJugador.getY()] = true;
-        
-        while (!listaAbiertos.isEmpty() && !gemaEncontrada) {
+        while (!listaAbiertos.isEmpty() && !objetivoEncontrado) {
                        
             nodoActual = listaAbiertos.poll();
             
@@ -181,23 +183,21 @@ public class TestAgent extends BaseAgent{
             int xActual = observacionActual.getX(),
                 yActual = observacionActual.getY();
             
-            if (gema.equals(observacionActual)) {
-                gemaEncontrada = true;
-            } else {
-                
+            if (objetivo.equals(observacionActual)) {
+                objetivoEncontrado = true;
+            } else {                
                 LinkedList<Types.ACTIONS> acciones;
                 
                 int yArriba = yActual - 1,
                     yAbajo = yActual + 1,
                     xIzquierda = xActual - 1,
-                    xDerecha = xActual + 1;
+                    xDerecha = xActual + 1,
+                    yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1;;
             
                 Observation casillaArriba = observacionNivel[xActual][yArriba].get(0),
                             casillaAbajo = observacionNivel[xActual][yAbajo].get(0),
                             casillaDerecha = observacionNivel[xDerecha][yActual].get(0),
                             casillaIzquierda = observacionNivel[xIzquierda][yActual].get(0);
-                
-                int yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1;
                 
                 // Descendiente superior
                 if (!mapaExplorado[xActual][yArriba] &&
@@ -213,7 +213,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
-                                                        gema.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.N, acciones, casillaArriba, nodoActual));
                 }
                 
@@ -231,7 +231,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
-                                                        gema.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.S, acciones, casillaAbajo, nodoActual));
                 }
                 
@@ -251,7 +251,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
-                                                        gema.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.W, acciones, casillaIzquierda, nodoActual));
                 }
                 
@@ -271,7 +271,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
-                                                        gema.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.E, acciones, casillaDerecha, nodoActual));
                 }
                 
@@ -285,8 +285,8 @@ public class TestAgent extends BaseAgent{
         CasillaCamino recorrido = listaExplorados.get(listaExplorados.size() - 1);
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
-        if (gemaEncontrada) {
-            informacionPlan.distancia = posInicial.getManhattanDistance(gema);
+        if (objetivoEncontrado) {
+            informacionPlan.distancia = posInicial.getManhattanDistance(objetivo);
         
             while (recorrido.padre != null) {
                 // Aniadir casillas recorridas
