@@ -7,13 +7,12 @@ import ontology.Types;
 import tools.ElapsedCpuTimer;
 
 import java.util.ArrayList;
-
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.PriorityQueue;
 import java.util.Deque;
 import java.util.ArrayDeque;
-import java.util.PriorityQueue;
-
-import java.util.Collections;
 
 public class TestAgent extends BaseAgent{
     
@@ -114,6 +113,7 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
             pathFinder(7, 9, stateObs);
+            enemyProbability(stateObs);
             System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
@@ -159,7 +159,7 @@ public class TestAgent extends BaseAgent{
                   numColumnas = observacionNivel[0].length;
         
         // Mapa de casillas exploradas
-        boolean mapaExplorado[][] = new boolean[numFilas][numColumnas];
+        boolean[][] mapaExplorado = new boolean[numFilas][numColumnas];
         
         for (int i = 0; i < numFilas; i++) {
             for (int j = 0; j < numColumnas; j++) {
@@ -300,5 +300,79 @@ public class TestAgent extends BaseAgent{
             // Aniadir casilla inicial
             informacionPlan.listaCasillas.add(0, recorrido.observacion);
         }                
+    }
+    
+    void enemyProbability(StateObservation stateObs) {
+        Map<Observation, Double> probabilidadEnemigo = new HashMap<>();
+        ArrayList<Observation>[] enemigos = this.getEnemiesList(stateObs);
+        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
+        Deque<Observation> casillasLibres = new ArrayDeque<>();
+        ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
+        
+        Observation observacionActual;
+        
+        final int numFilas = observacionNivel.length,
+                  numColumnas = observacionNivel[0].length,
+                  numEnemigos = enemigos.length,
+                  longitudCamino = informacionPlan.listaCasillas.size();
+        
+        final ObservationType muro = ObservationType.WALL,
+                              roca = ObservationType.BOULDER,
+                              vacio = ObservationType.EMPTY;
+        
+        boolean [][] celdasExploradas = new boolean[numFilas][numColumnas];
+        
+        for (int i = 0; i < numFilas; i++) {
+            for (int j = 0; j < numColumnas; j++) {
+                celdasExploradas[i][j] = false;
+            }
+        }
+        
+        
+        for (int i = 0; i < numEnemigos; i++) {
+            System.out.println(i);
+            casillasLibres.addFirst(enemigos[i].get(0));
+            
+            boolean[][] mapaPropio = celdasExploradas.clone();            
+            mapaPropio[enemigos[i].get(0).getX()][enemigos[i].get(0).getY()] = true;  
+            
+            ArrayList<Observation> casillasHijo = new ArrayList<>();
+            
+            while (!casillasLibres.isEmpty()) {
+                observacionActual = casillasLibres.pollFirst();
+                
+                int xActual = observacionActual.getX(),
+                    yActual = observacionActual.getY();
+                
+                casillasHijo.clear();
+                
+                casillasHijo.add(observacionNivel[xActual][yActual - 1].get(0));     // casilla arriba
+                casillasHijo.add(observacionNivel[xActual][yActual + 1].get(0));     // casilla abajo
+                casillasHijo.add(observacionNivel[xActual - 1][yActual].get(0));     // casilla izquierda
+                casillasHijo.add(observacionNivel[xActual + 1][yActual].get(0));     // casilla derecha
+                
+                for (Observation obs: casillasHijo) {
+                    xActual = obs.getX();
+                    yActual = obs.getY();
+                    
+                    if (!mapaPropio[xActual][yActual]) {
+                        
+                        if (obs.getType().equals(vacio)) {
+                            casillasLibres.addLast(obs);
+                        }
+                        
+                        if (!obs.getType().equals(muro)) {
+                            posiblesCasillasCamino.add(obs);
+                        }                        
+                    }
+                    
+                    mapaPropio[xActual][yActual] = true;
+                }                
+            }
+            
+            
+            
+            posiblesCasillasCamino.clear();
+        }
     }
 }
