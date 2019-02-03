@@ -304,16 +304,19 @@ public class TestAgent extends BaseAgent{
     
     void enemyProbability(StateObservation stateObs) {
         Map<Observation, Double> probabilidadEnemigo = new HashMap<>();
-        ArrayList<Observation>[] enemigos = this.getEnemiesList(stateObs);
+        ArrayList<Observation> enemigos = new ArrayList<>();
         ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
         Deque<Observation> casillasLibres = new ArrayDeque<>();
         ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
+        
+        enemigos.addAll(this.getBatsList(stateObs));
+        enemigos.addAll(this.getScorpionsList(stateObs));
         
         Observation observacionActual;
         
         final int numFilas = observacionNivel.length,
                   numColumnas = observacionNivel[0].length,
-                  numEnemigos = enemigos.length,
+                  numEnemigos = enemigos.size(),
                   longitudCamino = informacionPlan.listaCasillas.size();
         
         final ObservationType muro = ObservationType.WALL,
@@ -330,11 +333,10 @@ public class TestAgent extends BaseAgent{
         
         
         for (int i = 0; i < numEnemigos; i++) {
-            System.out.println(i);
-            casillasLibres.addFirst(enemigos[i].get(0));
+            casillasLibres.addFirst(enemigos.get(i));
             
             boolean[][] mapaPropio = celdasExploradas.clone();            
-            mapaPropio[enemigos[i].get(0).getX()][enemigos[i].get(0).getY()] = true;  
+            mapaPropio[enemigos.get(i).getX()][enemigos.get(i).getY()] = true;  
             
             ArrayList<Observation> casillasHijo = new ArrayList<>();
             
