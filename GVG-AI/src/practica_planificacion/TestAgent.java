@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.Deque;
 import java.util.ArrayDeque;
+import java.util.ListIterator;
 
 public class TestAgent extends BaseAgent{
     
@@ -113,8 +114,10 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
             pathFinder(7, 9, stateObs);
-            enemyProbability(stateObs);
-            System.out.println(elapsedTimer.remainingTimeMillis());
+            informacionPlan.probabilidadEnemigos = enemyProbability(stateObs);
+            
+            //System.out.println("Probabilidad de enemigos en el camino: " + informacionPlan.probabilidadEnemigos);
+            //System.out.println(elapsedTimer.remainingTimeMillis());
             
             try{
                 Thread.sleep(1000);
@@ -282,6 +285,7 @@ public class TestAgent extends BaseAgent{
             listaExplorados.add(nodoActual);
         }
         
+        // Obtener la casilla del objetivo
         CasillaCamino recorrido = listaExplorados.get(listaExplorados.size() - 1);
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
@@ -302,12 +306,20 @@ public class TestAgent extends BaseAgent{
         }                
     }
     
-    void enemyProbability(StateObservation stateObs) {
-        Map<Observation, Double> probabilidadEnemigo = new HashMap<>();
+    double enemyProbability(StateObservation stateObs) {
+        // Asociar pares enemigo:probabilidad
+        Map<Observation, Double> probabilidadesEnemigos = new HashMap<>();
+        
         ArrayList<Observation> enemigos = new ArrayList<>();
         ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
         Deque<Observation> casillasLibres = new ArrayDeque<>();
+        
+        /* Posibles casillas a las que puede llegar un enemigo.
+        Se resetean para cada enemigo */
         ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
+        
+        // Probabilidad acumulada de encontrar enemigos en el camino
+        double probabilidadAcumulada = 0.0;
         
         enemigos.addAll(this.getBatsList(stateObs));
         enemigos.addAll(this.getScorpionsList(stateObs));
@@ -316,13 +328,16 @@ public class TestAgent extends BaseAgent{
         
         final int numFilas = observacionNivel.length,
                   numColumnas = observacionNivel[0].length,
-                  numEnemigos = enemigos.size(),
-                  longitudCamino = informacionPlan.listaCasillas.size();
+                  numEnemigos = enemigos.size();
         
         final ObservationType muro = ObservationType.WALL,
-                              roca = ObservationType.BOULDER,
                               vacio = ObservationType.EMPTY;
         
+        /* Probabilidad del enemigo de moverse en una determinada direccion.
+        4 posibles direcciones: arriba, abajo, izquierda y derecha */
+        final double probMovimientoDireccion = 0.25;
+        
+        // Mapa de celdas exploradas para cada enemigo
         boolean [][] celdasExploradas = new boolean[numFilas][numColumnas];
         
         for (int i = 0; i < numFilas; i++) {
@@ -331,15 +346,17 @@ public class TestAgent extends BaseAgent{
             }
         }
         
-        
+        // Obtener para cada enemigo las posibles casillas a las que puede llegar
         for (int i = 0; i < numEnemigos; i++) {
-            casillasLibres.addFirst(enemigos.get(i));
+            Observation enemigoActual = enemigos.get(i);
+            casillasLibres.addFirst(enemigoActual);            
             
             boolean[][] mapaPropio = celdasExploradas.clone();            
             mapaPropio[enemigos.get(i).getX()][enemigos.get(i).getY()] = true;  
             
             ArrayList<Observation> casillasHijo = new ArrayList<>();
             
+            // Obtener las casillas adyacentes a las que puede llegar el enemigo
             while (!casillasLibres.isEmpty()) {
                 observacionActual = casillasLibres.pollFirst();
                 
@@ -372,9 +389,62 @@ public class TestAgent extends BaseAgent{
                 }                
             }
             
+            /* Iterar sobre las posibles casillas para comprobar cuales
+            se encuentran dentro del plan del agente. Eliminar aquellas
+            que no se encuentren en el camino del agente */
+            ListIterator iterator = posiblesCasillasCamino.listIterator();
+            
+            while (iterator.hasNext()) {
+                Observation casilla = (Observation) iterator.next();
+                boolean contenidaCasillaCamino = false;
+                
+                for (Observation casillaCamino: informacionPlan.listaCasillas) {
+                    if (casillaCamino.equals(casilla)) {
+                        contenidaCasillaCamino = true;
+                    }
+                }
+                
+                if (!contenidaCasillaCamino) {
+                    iterator.remove();
+                }
+            }
             
             
+            // Obtener la probabilidad de que el enemigo se encuentre en el camino
+            double probabilidadEnemigo = 0.0;
+            
+            /* Obtener la distancia a la casilla más cercana a la del enemigo
+            La distancia tiene que ser menor a la raiz de la distancia del camino
+            del agente para que pueda ser alcanzable */
+            if (!posiblesCasillasCamino.isEmpty()) {
+                int distanciaMinima = Integer.MAX_VALUE;
+                
+                for (Observation casilla : posiblesCasillasCamino) {
+                    int distanciaCasilla = enemigoActual.getManhattanDistance(casilla);
+                    
+                    if (distanciaCasilla < distanciaMinima) {
+                        distanciaMinima = distanciaCasilla;
+                    }
+                }
+                
+                /* La probabilidad es 1/4 (numero de posibles casillas a las 
+                que moverse en cada momento) elevado a la distancia hasta la
+                casilla más próxima */
+                if (distanciaMinima < Math.sqrt(informacionPlan.distancia)) {
+                    probabilidadEnemigo = Math.pow(probMovimientoDireccion, distanciaMinima);
+                }
+            }
+            
+            probabilidadesEnemigos.put(enemigoActual, probabilidadEnemigo);         
             posiblesCasillasCamino.clear();
         }
+        
+        // Acumular las probabilidades individuales de cada enemigo
+        for (double probabilidadInidividual: probabilidadesEnemigos.values()) {
+            probabilidadAcumulada += probabilidadInidividual;
+        }
+        
+        // Devolver la media de las probabilidades
+        return probabilidadAcumulada / numEnemigos;
     }
 }

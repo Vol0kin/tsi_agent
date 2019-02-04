@@ -6,7 +6,6 @@
 package practica_planificacion;
 
 import ontology.Types;
-import core.game.StateObservation;
 
 import java.util.LinkedList;
 

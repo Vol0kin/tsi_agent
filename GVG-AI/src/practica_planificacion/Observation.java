@@ -44,9 +44,6 @@ public class Observation {
             case(5):
                 type = ObservationType.EXIT;
                 break;
-            default:
-                type = ObservationType.BOULDER;
-                break;
         }
         
         tools.Vector2d pos = obs.position;
