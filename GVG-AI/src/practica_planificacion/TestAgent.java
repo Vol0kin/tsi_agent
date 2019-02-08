@@ -17,7 +17,7 @@ import java.util.ListIterator;
 
 public class TestAgent extends BaseAgent{
     
-    private int iter = 0;
+    private boolean a = true;
     PathInformation informacionPlan;
     
     public TestAgent(StateObservation so, ElapsedCpuTimer elapsedTimer){
@@ -28,27 +28,28 @@ public class TestAgent extends BaseAgent{
     @Override
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer){
         //System.out.println(elapsedTimer.remainingTimeMillis());
+        /*
         if (iter == 0){
             
             // Observation Grid
-            /*
+            
             ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
         
             for (int y = 0; y < grid[0].length; y++)
                 for (int x = 0; x < grid.length; x++)
                     System.out.println("Fil: " + y + " Col: " + x + " Obj: " + 
                             grid[x][y].get(0).getType());
-            */
+            
             
             // Obtener lista de enemigos
-            /*
+            
             ArrayList<Observation>[] enemies = this.getEnemiesList(stateObs);
         
             for (int i = 0; i < enemies.length; i++)
                 for (Observation obs : enemies[i])
-                    System.out.println(obs);*/
+                    System.out.println(obs);
             
-            /*
+            
             ArrayList<Observation> bats = this.getBatsList(stateObs);
             ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
             
@@ -58,16 +59,16 @@ public class TestAgent extends BaseAgent{
             
             System.out.println("Scorpions:");
             for (Observation scorpion : scorpions)
-                System.out.println(scorpion);*/
+                System.out.println(scorpion);
                        
-            /* // Gemas
+             // Gemas
             ArrayList<Observation> gems = this.getGemsList(stateObs);
         
             for (Observation obs : gems)
-                System.out.println(obs);*/
+                System.out.println(obs);
             
             // Wall, Ground, Boulder, Empty
-            /*
+            
             ArrayList<Observation> walls = this.getWallsList(stateObs);
             ArrayList<Observation> groundTiles = this.getGroundTilesList(stateObs);
             ArrayList<Observation> boulders = this.getBouldersList(stateObs);
@@ -88,31 +89,33 @@ public class TestAgent extends BaseAgent{
             System.out.println("Casillas vacías:");
             for (Observation obs : emptyTiles)
                 System.out.println(obs);
-            */
+           
             
             // Salida
-            /*
+           
             Observation exit = this.getExit(stateObs);           
-            System.out.println(exit);*/
+            System.out.println(exit);
             
             // Jugador
-            /*
+           
             PlayerObservation player = this.getPlayer(stateObs);
-            System.out.println(player);*/      
+            System.out.println(player);      
             
             // Número de gemas
                     
             // System.out.println(this.getNumGems(stateObs));
             
             // Distancias y colisiones
-            /*
+            
             PlayerObservation player = this.getPlayer(stateObs);
             Observation enemy = this.getScorpionsList(stateObs).get(0);
             
             System.out.println("Colisionan?: " + player.collides(enemy));
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
-            */
+            
+            
+            
             pathFinder(1, 4, stateObs);
             informacionPlan.probabilidadEnemigos = enemyProbability(stateObs);
                   
@@ -133,21 +136,81 @@ public class TestAgent extends BaseAgent{
             //System.out.println("Probabilidad de enemigos en el camino: " + informacionPlan.probabilidadEnemigos);
             //System.out.println(elapsedTimer.remainingTimeMillis());
             
-            /*try{
+            try{
                 Thread.sleep(1000);
             }
-            catch(InterruptedException e){}*/
+            catch(InterruptedException e){}
             
             
         iter++;
+        }*/
+        
+        // Voy de una gema a otra hasta tener 9
+          
+        // VER LO QUE PASA SI AL COGER UNA GEMA HAGO QUE PIERDA PORQUE ME QUEDE
+        // ENCERRADO O HAGO QUE UNA GEMA QUEDE ENCERRADA!!
+        
+        // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
+        // ANTES DE COGERLAS)
+        
+        ArrayList<Observation> gems = new ArrayList();
+        int ind = -1;
+        LinkedList<Types.ACTIONS> plan = new LinkedList();
+        
+        if (plan.size() == 0){
+            // Veo si tengo el número suficiente de gemas
+            
+            if (this.getRemainingGems(stateObs) == 0){
+                pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                
+                plan = informacionPlan.plan;
+            }
+            else{
+            
+                // Obtengo las gemas
+
+                gems = this.getGemsList(stateObs);
+
+                // Veo la gema más cercana al jugador
+
+                PlayerObservation player = this.getPlayer(stateObs);
+
+                int min = 100;
+                int i = 0;
+
+                for (Observation ob : gems){
+                    if (player.getManhattanDistance(ob) < min){
+                        // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
+                        // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
+                        pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+
+                        if (informacionPlan.plan.size() > 0){
+                            min = player.getManhattanDistance(ob);
+                            ind = i;
+
+                            plan = informacionPlan.plan; // Guardo el plan para que no se borre al volver a hacer pathFinder
+                        }  
+                    }
+
+                    i++;
+                }
+            }
         }
-    
-        Types.ACTIONS action = informacionPlan.plan.poll();
+        
+        System.out.println("Tam plan= " + plan.size());
+        
+        if (ind != -1)
+            System.out.println(gems.get(ind));
+        
+        Types.ACTIONS action = plan.poll();
         
         return action;
     }
     
     private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
+        informacionPlan.plan = new LinkedList();    // Borro los planes en el caso de que hubiera
+        informacionPlan.listaCasillas = new ArrayList();
+
         // Cola de nodos abiertos
         PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
                 (CasillaCamino c1, CasillaCamino c2) -> c1.costeF - c2.costeF);
