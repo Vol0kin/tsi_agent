@@ -36,24 +36,10 @@ public class Test {
 		boolean visuals = true;
 		int seed = new Random().nextInt();
 
-                // Juegos: 1 -> evitar que se quemen las personas al pasar
-                // 4 -> Resolver puzle y encontrar la llave
-                // 5 -> conseguir que las cintas transportadoras lleven el cofre al objetivo
                 // <10> -> conseguir x diamantes e ir a la salida sin que te maten
                 // 11 -> versión diferente en la que no pueden excavar los enemigos
-                // 12 -> puzle empujando una llave
-                // <21> -> sokoban (puzzle)
-                // 31 -> puzzle -> abrir cada puerta moviendo (empujando) el bloque hasta una casilla especial
-                // 36 -> puzzle -> llegar al objetivo empujando bloques a agujeros para que desaparezcan
-                // 38 -> puzzle -> llegar al objetivo quemando bloques con disparos que se recargan recogiendo gemas
-                // 41 -> cruzar la calle evitando coches
-                // 42 -> parecido al anterior
-                // <43> -> como el snake, pero no paras de crecer y tienes que intentar comer lo más rápido toda la comida
-                // <63> -> comecocos
-                // 68 -> llegar hasta la salida, esquivando los disparos y usando portales
-                // 100 -> llegar hasta la salida esquivando a los enemigos o matándolos
-                
-                // Juego elegido -> el 11 (y también el 10)
+              
+                // Juego elegido -> el 11
                 
                 boolean juego_yo = false;
                 

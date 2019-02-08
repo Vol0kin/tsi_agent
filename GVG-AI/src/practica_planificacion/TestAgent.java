@@ -113,17 +113,32 @@ public class TestAgent extends BaseAgent{
             System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
             System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
             */
-            pathFinder(7, 9, stateObs);
+            pathFinder(1, 4, stateObs);
             informacionPlan.probabilidadEnemigos = enemyProbability(stateObs);
+                  
+            System.out.println("Distancia del plan = " + informacionPlan.distancia); // NO ES EL NÚMERO DE ACCIONES!
+            System.out.println("Probabilidad enemigos = " + informacionPlan.probabilidadEnemigos*100 + " %");
+            
+            ArrayList<Observation> lista_casillas = informacionPlan.listaCasillas;
+            LinkedList<Types.ACTIONS> acciones = informacionPlan.plan;
+            
+            for (Observation ob : lista_casillas){
+                System.out.println("Casilla: " + ob);
+            }
+            
+            for (Types.ACTIONS act : acciones){
+                System.out.println("Acción: " + act);
+            }
             
             //System.out.println("Probabilidad de enemigos en el camino: " + informacionPlan.probabilidadEnemigos);
             //System.out.println(elapsedTimer.remainingTimeMillis());
             
-            try{
+            /*try{
                 Thread.sleep(1000);
             }
-            catch(InterruptedException e){}
-               
+            catch(InterruptedException e){}*/
+            
+            
         iter++;
         }
     

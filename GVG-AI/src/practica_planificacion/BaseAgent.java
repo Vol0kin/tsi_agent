@@ -16,7 +16,7 @@ import java.awt.Dimension;
 
 public abstract class BaseAgent extends AbstractPlayer{
     public static final int NUM_GEMS_FOR_EXIT = 9; // Número de gemas necesarias para poder pasar al siguiente nivel
-    
+                                                   // Hay 23 gemas en total
     //Constructor. It must return in 1 second maximum.
     public BaseAgent(StateObservation so, ElapsedCpuTimer elapsedTimer){}
     
