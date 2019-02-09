@@ -14,6 +14,7 @@ import java.util.PriorityQueue;
 import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.ListIterator;
+import ontology.Types.ACTIONS;
 
 public class TestAgent extends BaseAgent{
     
@@ -153,6 +154,7 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
         
+        /*
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -166,7 +168,6 @@ public class TestAgent extends BaseAgent{
                 plan = informacionPlan.plan;
             }
             else{
-            
                 // Obtengo las gemas
 
                 gems = this.getGemsList(stateObs);
@@ -203,6 +204,18 @@ public class TestAgent extends BaseAgent{
             System.out.println(gems.get(ind));
         
         Types.ACTIONS action = plan.poll();
+        */
+        
+        // <Clústerización>
+        ArrayList<ArrayList<Observation>> clusters = createClusters(3, stateObs); // Epsilon = 3 es un buen valor
+        
+        System.out.println("Número de clusters: " + clusters.size());
+        
+        for (int i = 0; i < clusters.size(); i++)
+            for (Observation ob : clusters.get(i))
+                System.out.println("Clúster: " + i + ob);
+        
+        Types.ACTIONS action = ACTIONS.ACTION_NIL;
         
         return action;
     }
@@ -548,5 +561,56 @@ public class TestAgent extends BaseAgent{
         }
         
         return probabilidadTotal;
+    }
+    
+    // <Clústerización>
+    // Uso el algoritmo DBSCAN para clasificar las gemas en clústeres (grupos)
+    // Aquellas gemas clasificadas como ruido las añado a un clúster en el que solo hay una gema
+    // epsilon: radio (en distancia Manhattan) en el que se buscan gemas para el mismo clúster
+    private ArrayList<ArrayList<Observation>> createClusters(int epsilon, StateObservation stateObs){
+        ArrayList<Observation> gems = this.getGemsList(stateObs);
+        int gems_size = gems.size();
+        boolean[] visited = new boolean[gems_size]; // Valor inicial -> false
+        int[] ind_cluster = new int[gems_size]; // Indice del clúster al que pertenece la gema -> -1 si no pertenece a ningún clúster todavía
+        
+        for (int i = 0; i < ind_cluster.length; i++)
+            ind_cluster[i] = -1;
+        
+        // Como solo hace falta que haya una gema en el vecindario para que se considere
+        // clúster, si una gema se marca como ruido es porque no tiene ninguna gema en
+        // su vecindario, por lo que ese punto no será parte de ningún clúster
+        // Esto significa que todas las gemas visitadas no hay que tenerlas en cuenta para ver si pertenecen al clúster
+        // (o ya son parte de un clúster o no van a serlo)
+        
+        int num_cluster = -1;
+        Observation this_gem;
+        
+        for (int i = 0; i < gems_size && !visited[i]; i++){
+            this_gem = gems.get(i);
+            
+            if (ind_cluster[i] == -1){ // No ha sido visitada pero todavía no pertenece a ningún clúster -> creo un nuevo clúster y la añado
+                num_cluster++;
+                ind_cluster[i] = num_cluster; // La gema pertenece a ese clúster  
+            }
+            // Añado al clúster de la gema las gemas del vecindario
+            
+            for (int j = 0; j < gems_size; j++){ // Tengo que recorrer también las gemas ya visitadas para que funcione bien!
+                if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon) // Esa gema es del vecindario -> la añado al clúster
+                    ind_cluster[j] = ind_cluster[i];
+            }
+                
+            visited[i] = true;
+        }
+        
+        ArrayList<ArrayList<Observation>> clusters = new ArrayList();
+        
+        for (int i = 0; i <= num_cluster; i++)
+            clusters.add(new ArrayList());
+        
+        // Añado cada gema a su clúster correspondiente
+        for (int i = 0; i < gems_size; i++)
+            clusters.get(ind_cluster[i]).add(gems.get(i));
+   
+        return clusters;
     }
 }
