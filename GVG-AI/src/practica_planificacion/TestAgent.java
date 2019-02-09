@@ -208,8 +208,8 @@ public class TestAgent extends BaseAgent{
     }
     
     private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
-        informacionPlan.plan = new LinkedList();    // Borro los planes en el caso de que hubiera
-        informacionPlan.listaCasillas = new ArrayList();
+        informacionPlan.plan = new LinkedList<>();    // Borro los planes en el caso de que hubiera
+        informacionPlan.listaCasillas = new ArrayList<>();
 
         // Cola de nodos abiertos
         PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
@@ -273,7 +273,8 @@ public class TestAgent extends BaseAgent{
                     yAbajo = yActual + 1,
                     xIzquierda = xActual - 1,
                     xDerecha = xActual + 1,
-                    yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1;;
+                    yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1,
+                    costeHijo;  // Coste para ir al hijo (numero de acciones)
             
                 Observation casillaArriba = observacionNivel[xActual][yArriba].get(0),
                             casillaAbajo = observacionNivel[xActual][yAbajo].get(0),
@@ -288,12 +289,14 @@ public class TestAgent extends BaseAgent{
                 
                     acciones = new LinkedList<>();
                     acciones.addFirst(Types.ACTIONS.ACTION_UP);
+                    costeHijo = nodoActual.costeG + 1;
                     
                     if (!nodoActual.orientacion.equals(Orientation.N)) {
                         acciones.addFirst(Types.ACTIONS.ACTION_UP);
+                        costeHijo++;
                     }
                     
-                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                    listaAbiertos.add(new CasillaCamino(costeHijo,
                                                         objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.N, acciones, casillaArriba, nodoActual));
                 }
@@ -306,12 +309,14 @@ public class TestAgent extends BaseAgent{
                 
                     acciones = new LinkedList<>();
                     acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
+                    costeHijo = nodoActual.costeG + 1;
                     
                     if (!nodoActual.orientacion.equals(Orientation.S)) {
                         acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
+                        costeHijo++;
                     }
                     
-                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                    listaAbiertos.add(new CasillaCamino(costeHijo,
                                                         objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.S, acciones, casillaAbajo, nodoActual));
                 }
@@ -326,12 +331,14 @@ public class TestAgent extends BaseAgent{
                 
                     acciones = new LinkedList<>();
                     acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
+                    costeHijo = nodoActual.costeG + 1;
                     
                     if (!nodoActual.orientacion.equals(Orientation.W)) {
                         acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
+                        costeHijo++;
                     }
                     
-                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                    listaAbiertos.add(new CasillaCamino(costeHijo,
                                                         objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.W, acciones, casillaIzquierda, nodoActual));
                 }
@@ -346,12 +353,14 @@ public class TestAgent extends BaseAgent{
                 
                     acciones = new LinkedList<>();
                     acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
+                    costeHijo = nodoActual.costeG + 1;
                     
                     if (!nodoActual.orientacion.equals(Orientation.E)) {
                         acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
+                        costeHijo++;
                     }
                     
-                    listaAbiertos.add(new CasillaCamino(posInicial.getManhattanDistance(observacionActual),
+                    listaAbiertos.add(new CasillaCamino(costeHijo,
                                                         objetivo.getManhattanDistance(observacionActual),
                                                         Orientation.E, acciones, casillaDerecha, nodoActual));
                 }
@@ -368,6 +377,7 @@ public class TestAgent extends BaseAgent{
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
         if (objetivoEncontrado) {
+            System.out.println("Encontrado objetivo");
             informacionPlan.distancia = posInicial.getManhattanDistance(objetivo);
         
             while (recorrido.padre != null) {
@@ -392,12 +402,16 @@ public class TestAgent extends BaseAgent{
         ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
         Deque<Observation> casillasLibres = new ArrayDeque<>();
         
+        // Numero de enemigos encontrados en el camino
+        int numEnemigosCamino = 0;
+        
         /* Posibles casillas a las que puede llegar un enemigo.
         Se resetean para cada enemigo */
         ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
         
         // Probabilidad acumulada de encontrar enemigos en el camino
-        double probabilidadAcumulada = 0.0;
+        double probabilidadAcumulada = 0.0,
+               probabilidadTotal = 0.0;
         
         enemigos.addAll(this.getBatsList(stateObs));
         enemigos.addAll(this.getScorpionsList(stateObs));
@@ -495,6 +509,7 @@ public class TestAgent extends BaseAgent{
             La distancia tiene que ser menor a la raiz de la distancia del camino
             del agente para que pueda ser alcanzable */
             if (!posiblesCasillasCamino.isEmpty()) {
+                numEnemigosCamino++;
                 int distanciaMinima = Integer.MAX_VALUE;
                 
                 for (Observation casilla : posiblesCasillasCamino) {
@@ -517,12 +532,16 @@ public class TestAgent extends BaseAgent{
             posiblesCasillasCamino.clear();
         }
         
-        // Acumular las probabilidades individuales de cada enemigo
-        for (double probabilidadInidividual: probabilidadesEnemigos.values()) {
-            probabilidadAcumulada += probabilidadInidividual;
+        // Acumular las probabilidades individuales de cada enemigo (si hay alguno)        
+        if (numEnemigosCamino > 0) {
+            for (double probabilidadInidividual: probabilidadesEnemigos.values()) {
+                probabilidadAcumulada += probabilidadInidividual;
+            }
+            
+            probabilidadTotal = probabilidadAcumulada / numEnemigosCamino;
         }
         
         // Devolver la media de las probabilidades
-        return probabilidadAcumulada / numEnemigos;
+        return probabilidadTotal;
     }
 }
