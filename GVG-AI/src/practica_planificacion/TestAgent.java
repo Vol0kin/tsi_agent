@@ -410,7 +410,8 @@ public class TestAgent extends BaseAgent{
         ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
         
         // Probabilidad acumulada de encontrar enemigos en el camino
-        double probabilidadAcumulada = 0.0,
+        // Probabilidad total de encontrarse con algun enemigo por el camino
+        double probabilidadAcumulada = 1.0,
                probabilidadTotal = 0.0;
         
         enemigos.addAll(this.getBatsList(stateObs));
@@ -532,16 +533,20 @@ public class TestAgent extends BaseAgent{
             posiblesCasillasCamino.clear();
         }
         
-        // Acumular las probabilidades individuales de cada enemigo (si hay alguno)        
+        /* Obtener la probabilidad de que no se cruce ningun enemigo en el camino
+        (1 - probabilidadInidividual) y realizar la multiplicacion de estas para
+        obtener la interseccion.
+        La probabilidadTotal sera 1 - probabilidadAcumulada (la probabilidad de 
+        que no haya ningun enemigo por el camino)
+        */
         if (numEnemigosCamino > 0) {
             for (double probabilidadInidividual: probabilidadesEnemigos.values()) {
-                probabilidadAcumulada += probabilidadInidividual;
+                probabilidadAcumulada *= 1.0 - probabilidadInidividual;
             }
             
-            probabilidadTotal = probabilidadAcumulada / numEnemigosCamino;
+            probabilidadTotal = 1.0 - probabilidadAcumulada;
         }
         
-        // Devolver la media de las probabilidades
         return probabilidadTotal;
     }
 }
