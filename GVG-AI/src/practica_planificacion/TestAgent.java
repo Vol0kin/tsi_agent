@@ -18,7 +18,7 @@ import ontology.Types.ACTIONS;
 
 public class TestAgent extends BaseAgent{
     
-    private boolean a = true;
+    private boolean primerTurno = true;
     PathInformation informacionPlan;
     
     public TestAgent(StateObservation so, ElapsedCpuTimer elapsedTimer){
@@ -206,14 +206,22 @@ public class TestAgent extends BaseAgent{
         Types.ACTIONS action = plan.poll();
         */
         
-        // <Clústerización>
-        ArrayList<ArrayList<Observation>> clusters = createClusters(3, stateObs); // Epsilon = 3 es un buen valor
+        // <Clústerización> -> Tarda alrededor de 0.08 ms
         
-        System.out.println("Número de clusters: " + clusters.size());
-        
-        for (int i = 0; i < clusters.size(); i++)
-            for (Observation ob : clusters.get(i))
-                System.out.println("Clúster: " + i + ob);
+        if (primerTurno){
+            primerTurno = false;
+            ArrayList<Cluster> clusters = createClusters(3, stateObs); // Epsilon = 3 es un buen valor
+
+            System.out.println("<<<<<<Número de clusters: " + clusters.size());
+
+            for (int i = 0; i < clusters.size(); i++){
+                System.out.println("Cluster: " + i);
+                System.out.println("PathLength: " + clusters.get(i).getPathLenght());
+
+                for (int j = 0; j < clusters.get(i).getNumGems(); j++)
+                    System.out.println(clusters.get(i).getGem(j));
+            }
+        }
         
         Types.ACTIONS action = ACTIONS.ACTION_NIL;
         
@@ -563,11 +571,11 @@ public class TestAgent extends BaseAgent{
         return probabilidadTotal;
     }
     
-    // <Clústerización>
+    // <Clústerización> -> Tarda alrededor de 0.08 ms
     // Uso el algoritmo DBSCAN para clasificar las gemas en clústeres (grupos)
     // Aquellas gemas clasificadas como ruido las añado a un clúster en el que solo hay una gema
     // epsilon: radio (en distancia Manhattan) en el que se buscan gemas para el mismo clúster
-    private ArrayList<ArrayList<Observation>> createClusters(int epsilon, StateObservation stateObs){
+    private ArrayList<Cluster> createClusters(int epsilon, StateObservation stateObs){
         ArrayList<Observation> gems = this.getGemsList(stateObs);
         int gems_size = gems.size();
         boolean[] visited = new boolean[gems_size]; // Valor inicial -> false
@@ -575,13 +583,7 @@ public class TestAgent extends BaseAgent{
         
         for (int i = 0; i < ind_cluster.length; i++)
             ind_cluster[i] = -1;
-        
-        // Como solo hace falta que haya una gema en el vecindario para que se considere
-        // clúster, si una gema se marca como ruido es porque no tiene ninguna gema en
-        // su vecindario, por lo que ese punto no será parte de ningún clúster
-        // Esto significa que todas las gemas visitadas no hay que tenerlas en cuenta para ver si pertenecen al clúster
-        // (o ya son parte de un clúster o no van a serlo)
-        
+       
         int num_cluster = -1;
         Observation this_gem;
         
@@ -595,6 +597,7 @@ public class TestAgent extends BaseAgent{
             // Añado al clúster de la gema las gemas del vecindario
             
             for (int j = 0; j < gems_size; j++){ // Tengo que recorrer también las gemas ya visitadas para que funcione bien!
+                
                 if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon) // Esa gema es del vecindario -> la añado al clúster
                     ind_cluster[j] = ind_cluster[i];
             }
@@ -602,15 +605,19 @@ public class TestAgent extends BaseAgent{
             visited[i] = true;
         }
         
-        ArrayList<ArrayList<Observation>> clusters = new ArrayList();
+        ArrayList<Cluster> clusters = new ArrayList();
         
         for (int i = 0; i <= num_cluster; i++)
-            clusters.add(new ArrayList());
+            clusters.add(new Cluster());
         
         // Añado cada gema a su clúster correspondiente
         for (int i = 0; i < gems_size; i++)
-            clusters.get(ind_cluster[i]).add(gems.get(i));
+            clusters.get(ind_cluster[i]).addGem(gems.get(i));
    
+        // Calculo el pathLength de cada clúster
+        for (int i = 0; i <= num_cluster; i++)
+            clusters.get(i).calculatePathLength();
+        
         return clusters;
     }
 }
