@@ -229,6 +229,11 @@ public class TestAgent extends BaseAgent{
     }
     
     private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
+        pathFinder(xObjetivo, yObjetivo, stateObs, this.getPlayer(stateObs));
+    }
+    
+    // Cuando se proporcione una posicion inicial personalizada, se debe asignar una orientacion al personaje
+    private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ) {
         informacionPlan.plan = new LinkedList<>();    // Borro los planes en el caso de que hubiera
         informacionPlan.listaCasillas = new ArrayList<>();
 
@@ -250,9 +255,6 @@ public class TestAgent extends BaseAgent{
         
         final ObservationType muro = ObservationType.WALL,
                               roca = ObservationType.BOULDER;
-        
-        // Posicion inicial del jugador
-        final PlayerObservation posInicial = this.getPlayer(stateObs);
         
         // Objetivo a encontrar
         final Observation objetivo = observacionNivel[xObjetivo][yObjetivo].get(0);
