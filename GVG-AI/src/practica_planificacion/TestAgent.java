@@ -221,6 +221,17 @@ public class TestAgent extends BaseAgent{
                 for (int j = 0; j < clusters.get(i).getNumGems(); j++)
                     System.out.println(clusters.get(i).getGem(j));
             }
+            
+            // Obtengo la distancia entre los clusters
+            
+            int[][] dist_matrix = this.getClustersDistances(clusters, stateObs);
+            
+            for (int i = 0; i < dist_matrix.length; i++){
+                for (int j = 0; j < dist_matrix.length; j++){
+                    System.out.print(dist_matrix[i][j] + "\t");
+                }
+                System.out.print('\n');
+            }
         }
         
         Types.ACTIONS action = ACTIONS.ACTION_NIL;
@@ -228,14 +239,14 @@ public class TestAgent extends BaseAgent{
         return action;
     }
     
-    private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
-        pathFinder(xObjetivo, yObjetivo, stateObs, this.getPlayer(stateObs));
+    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
+        return (pathFinder(xObjetivo, yObjetivo, stateObs, this.getPlayer(stateObs)));
     }
     
     // Cuando se proporcione una posicion inicial personalizada, se debe asignar una orientacion al personaje
-    private void pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ) {
-        informacionPlan.plan = new LinkedList<>();    // Borro los planes en el caso de que hubiera
-        informacionPlan.listaCasillas = new ArrayList<>();
+    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ) {   
+        // Plan a devolver
+        PathInformation nuevoPlan = new PathInformation();
 
         // Cola de nodos abiertos
         PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
@@ -401,23 +412,25 @@ public class TestAgent extends BaseAgent{
         // Guardar distancia recorrida  y acciones en la informacion del plan
         if (objetivoEncontrado) {
             System.out.println("Encontrado objetivo");
-            informacionPlan.distancia = posInicial.getManhattanDistance(objetivo);
+            nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
         
             while (recorrido.padre != null) {
                 // Aniadir casillas recorridas
-                informacionPlan.listaCasillas.add(0, recorrido.observacion);
+                nuevoPlan.listaCasillas.add(0, recorrido.observacion);
                 
                 // Aniadir secuencia de acciones realizadas
-                informacionPlan.plan.addAll(0, recorrido.acciones);
+                nuevoPlan.plan.addAll(0, recorrido.acciones);
                 recorrido = recorrido.padre;
             }
             
             // Aniadir casilla inicial
-            informacionPlan.listaCasillas.add(0, recorrido.observacion);
-        }                
+            nuevoPlan.listaCasillas.add(0, recorrido.observacion);
+        }  
+        
+        return nuevoPlan;
     }
     
-    double enemyProbability(StateObservation stateObs) {
+    double enemyProbability(PathInformation plan, StateObservation stateObs) {
         // Asociar pares enemigo:probabilidad
         Map<Observation, Double> probabilidadesEnemigos = new HashMap<>();
         
@@ -514,7 +527,7 @@ public class TestAgent extends BaseAgent{
                 Observation casilla = (Observation) iterator.next();
                 boolean contenidaCasillaCamino = false;
                 
-                for (Observation casillaCamino: informacionPlan.listaCasillas) {
+                for (Observation casillaCamino: plan.listaCasillas) {
                     if (casillaCamino.equals(casilla)) {
                         contenidaCasillaCamino = true;
                     }
@@ -547,7 +560,7 @@ public class TestAgent extends BaseAgent{
                 /* La probabilidad es 1/4 (numero de posibles casillas a las 
                 que moverse en cada momento) elevado a la distancia hasta la
                 casilla más próxima */
-                if (distanciaMinima < Math.sqrt(informacionPlan.distancia)) {
+                if (distanciaMinima < Math.sqrt(plan.distancia)) {
                     probabilidadEnemigo = Math.pow(probMovimientoDireccion, distanciaMinima);
                 }
             }
@@ -621,5 +634,52 @@ public class TestAgent extends BaseAgent{
             clusters.get(i).calculatePathLength();
         
         return clusters;
+    }
+
+    // Obtiene las distancias aproximadas entre cada pareja de clusters usando una matriz de distancias
+    // Se calcula primero para cada pareja de clusters las dos gemas más cercanas
+    // entre sí usando la distancia Manhattan y después, con el A* simplificado, -----> NO! Por ahora uso las distancias Manhattan!
+    // se calcula la distancia entre esos dos clusters
+    private int[][] getClustersDistances(ArrayList<Cluster> clusters, StateObservation stateObs){   
+        int num_clusters = clusters.size();
+        int[][] dist_matrix = new int[num_clusters][num_clusters]; // Valor inicial -> 0
+        int num_gems_1, num_gems_2;
+        int min_dist, ind_gem_1 = -1, ind_gem_2 = -1, this_dist;
+        PathInformation plan;
+        
+        // d(a,b) = d(b,a) por lo que solo recorro la diagonal inferior de la matriz
+        for (int i = 1; i < num_clusters; i++)
+            for (int j = 0; j < i; j++){
+                // Calculo la pareja de gemas más cercanas (según dist. Manhattan) para esos dos clusters
+                num_gems_1 = clusters.get(i).getNumGems();
+                num_gems_2 = clusters.get(j).getNumGems();
+                min_dist = 1000;
+                
+                for (int k = 0; k < num_gems_1; k++)
+                    for (int l = 0; l < num_gems_2; l++){
+                        this_dist = clusters.get(i).getGem(k).getManhattanDistance(clusters.get(j).getGem(l));
+                        
+                        if (this_dist < min_dist){
+                            min_dist = this_dist;
+                            ind_gem_1 = k;
+                            ind_gem_2 = l;
+                        }
+                    }
+                 
+                // Calculo usando el A* simplificado la distancia entre esas dos gemas
+                // SI USO EL A* SIMPLIFICADO Y NO PUEDO LLEGAR A LA GEMA POR UNA ROCA, LA LONGITUD DEL PLAN ES 0!!
+                
+                /*plan = pathFinder( clusters.get(j).getGem(ind_gem_2).getX(), clusters.get(j).getGem(ind_gem_2).getY(),
+                        stateObs,
+                        new PlayerObservation(clusters.get(i).getGem(ind_gem_1).getX(),
+                                              clusters.get(i).getGem(ind_gem_1).getY(),
+                                              Orientation.N) );
+                
+                dist_matrix[i][j] = dist_matrix[j][i] = plan.plan.size(); // Guardo en la matriz el número de acciones del plan*/
+                
+                dist_matrix[i][j] = dist_matrix[j][i] = min_dist;
+            }
+        
+        return dist_matrix;
     }
 }
