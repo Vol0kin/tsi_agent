@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 /*  Define qué objeto observación se encuentra en una casilla dada del mapa
 

@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 // Imports de la superclase
 import ontology.Types;

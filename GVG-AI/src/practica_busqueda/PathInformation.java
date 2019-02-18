@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 import ontology.Types;
 

@@ -26,7 +26,7 @@ public class Test {
 		String sampleOLETSController = "tracks.singlePlayer.advanced.olets.Agent";
                 
                 // Mi controlador
-                String miControlador = "practica_planificacion.TestAgent";
+                String miControlador = "practica_busqueda.TestAgent";
 
 		//Load available games
 		String spGamesCollection =  "examples/all_games_sp.csv";
@@ -57,11 +57,11 @@ public class Test {
 
 		// 1. This starts a game, in a level, played by a human.
                 if (juego_yo)
-		ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
+                    ArcadeMachine.playOneGame(game, level1, recordActionsFile, seed);
 
 		// 2. This plays a game in a level by the controller.
                 if (!juego_yo)
-                ArcadeMachine.runOneGame(game, level1, visuals, miControlador, recordActionsFile, seed, 0);
+                    ArcadeMachine.runOneGame(game, level1, visuals, miControlador, recordActionsFile, seed, 0);
 
                 
 		// 3. This replays a game from an action file previously recorded

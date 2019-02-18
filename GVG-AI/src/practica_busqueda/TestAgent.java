@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 // Agente de prueba. Plantilla para un agente de este juego.
 

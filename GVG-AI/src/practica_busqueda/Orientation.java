@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 /* Orientación del jugador en un determinado momento del juego.
 

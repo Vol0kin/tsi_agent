@@ -1,4 +1,4 @@
-package practica_planificacion;
+package practica_busqueda;
 
 // Objeto presente en una posición del mapa en un momento del juego.
 // Sustituye a la clase core.game.Observation para los juegos 10 y 11
@@ -81,25 +81,6 @@ public class Observation {
     // Obtiene la distancia Manhattan entre esta observación y otra
     protected int getManhattanDistance(Observation otherOb){
         return (Math.abs(x - otherOb.x) + Math.abs(y - otherOb.y));
-    }
-    
-    @Override
-    public boolean equals(Object other){
-        if (other == null)
-            return false;
-        
-        if ( !(other instanceof Observation) )
-            return false;
-        
-        Observation otherOb = (Observation)other;
-        
-        if (otherOb == this)
-            return true;
-        
-        boolean isEqual = (otherOb.type == type && otherOb.x == x &&
-                otherOb.y == y);
-        
-        return isEqual;
     }
     
     @Override
