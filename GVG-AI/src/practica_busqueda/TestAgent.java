@@ -154,7 +154,7 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
         
-        /*
+        
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -163,7 +163,7 @@ public class TestAgent extends BaseAgent{
             // Veo si tengo el número suficiente de gemas
             
             if (this.getRemainingGems(stateObs) == 0){
-                pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
                 
                 plan = informacionPlan.plan;
             }
@@ -183,7 +183,7 @@ public class TestAgent extends BaseAgent{
                     if (player.getManhattanDistance(ob) < min){
                         // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
                         // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
 
                         if (informacionPlan.plan.size() > 0){
                             min = player.getManhattanDistance(ob);
@@ -204,7 +204,7 @@ public class TestAgent extends BaseAgent{
             System.out.println(gems.get(ind));
         
         Types.ACTIONS action = plan.poll();
-        */
+        
         
         // <Clústerización> -> Tarda alrededor de 0.08 ms
         
@@ -233,8 +233,6 @@ public class TestAgent extends BaseAgent{
                 System.out.print('\n');
             }
         }
-        
-        Types.ACTIONS action = ACTIONS.ACTION_NIL;
         
         return action;
     }
@@ -331,7 +329,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaArriba),
                                                         Orientation.N, acciones, casillaArriba, nodoActual));
                 }
                 
@@ -351,7 +349,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaAbajo),
                                                         Orientation.S, acciones, casillaAbajo, nodoActual));
                 }
                 
@@ -373,7 +371,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaIzquierda),
                                                         Orientation.W, acciones, casillaIzquierda, nodoActual));
                 }
                 
@@ -395,7 +393,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaDerecha),
                                                         Orientation.E, acciones, casillaDerecha, nodoActual));
                 }
                 
@@ -682,134 +680,5 @@ public class TestAgent extends BaseAgent{
             }
         
         return dist_matrix;
-    }
-    
-    private int shortestPathLength(Observation posInicial, Observation posFinal, StateObservation stateObs) {
-        int distancia = 0;
-        
-        // Cola de nodos abiertos
-        PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
-                (CasillaCamino c1, CasillaCamino c2) -> c1.costeF - c2.costeF);
-        
-        // Lista de nodos explorados (cerrados)
-        ArrayList<CasillaCamino> listaExplorados = new ArrayList<>();
-        
-        // Observacion del mapa
-        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
-        
-        // Observacion actual a explorar
-        Observation observacionActual;
-        
-        // Representa el nodo que se explora a continuacion
-        CasillaCamino nodoActual;
-        
-        final ObservationType muro = ObservationType.WALL;
-        
-                
-        final int numFilas = observacionNivel.length,
-                  numColumnas = observacionNivel[0].length;
-        
-        // Mapa de casillas exploradas
-        boolean[][] mapaExplorado = new boolean[numFilas][numColumnas];
-        
-        for (int i = 0; i < numFilas; i++) {
-            for (int j = 0; j < numColumnas; j++) {
-                mapaExplorado[i][j] = false;
-            }
-        }
-        
-        boolean objetivoEncontrado = false;
-        
-        // Lista de acciones
-        ArrayList<Types.ACTIONS> listaAcciones = new ArrayList<>();
-                
-        listaAcciones.add(Types.ACTIONS.ACTION_UP);
-        listaAcciones.add(Types.ACTIONS.ACTION_DOWN);
-        listaAcciones.add(Types.ACTIONS.ACTION_LEFT);
-        listaAcciones.add(Types.ACTIONS.ACTION_RIGHT);
-        
-        // Lista de orientaciones
-        ArrayList<Orientation> listaOrientaciones = new ArrayList<>();
-        
-        listaOrientaciones.add(Orientation.N);
-        listaOrientaciones.add(Orientation.S);
-        listaOrientaciones.add(Orientation.W);
-        listaOrientaciones.add(Orientation.E);
-        
-        Orientation orientacionInicial;
-        
-        if (posFinal.getY() < posInicial.getY()) {
-            orientacionInicial = Orientation.N;
-        } else {
-            orientacionInicial = Orientation.S;
-        }
-        
-        listaAbiertos.add(new CasillaCamino(0, posFinal.getManhattanDistance(posInicial),
-                                            orientacionInicial, null, posInicial, null));
-        
-        mapaExplorado[posInicial.getX()][posInicial.getY()] = true;
-        
-        while (!listaAbiertos.isEmpty() && !objetivoEncontrado) {
-                       
-            nodoActual = listaAbiertos.poll();
-            
-            observacionActual = nodoActual.observacion;
-            
-            int xActual = observacionActual.getX(),
-                yActual = observacionActual.getY();
-            
-            if (posFinal.equals(observacionActual)) {
-                objetivoEncontrado = true;
-            } else {                
-                LinkedList<Types.ACTIONS> acciones;
-                
-                int yArriba = yActual - 1,
-                    yAbajo = yActual + 1,
-                    xIzquierda = xActual - 1,
-                    xDerecha = xActual + 1,
-                    costeHijo;  // Coste para ir al hijo (numero de acciones)
-                
-                ArrayList<Observation> casillasDescendientes = new ArrayList<>();
-                
-                casillasDescendientes.add(observacionNivel[xActual][yArriba].get(0));
-                casillasDescendientes.add(observacionNivel[xActual][yAbajo].get(0));
-                casillasDescendientes.add(observacionNivel[xIzquierda][yActual].get(0));
-                casillasDescendientes.add(observacionNivel[xDerecha][yActual].get(0));
-                
-                
-                for (int i = 0; i < casillasDescendientes.size(); i++) {
-                    Observation casillaHija = casillasDescendientes.get(i);
-                    
-                    int xCasilla = casillaHija.getX(),
-                        yCasilla = casillaHija.getY();
-                    
-                    if (!mapaExplorado[xCasilla][yCasilla] && !casillaHija.getType().equals(muro)) {
-                        costeHijo = nodoActual.costeG + 1;
-                    
-                        if (!nodoActual.orientacion.equals(listaOrientaciones.get(i))) {
-                            costeHijo++;
-                        }
-                    
-                        listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                            posFinal.getManhattanDistance(observacionActual),
-                                                            listaOrientaciones.get(i), null, casillaHija, nodoActual));
-                    }
-                    
-                    mapaExplorado[xCasilla][yCasilla] = true;                    
-                }                
-            }                  
-            
-            listaExplorados.add(nodoActual);
-        }
-        
-        // Obtener la casilla del objetivo
-        CasillaCamino recorrido = listaExplorados.get(listaExplorados.size() - 1);
-        
-        while (recorrido != null) {
-            distancia++;
-            recorrido = recorrido.padre;
-        }
-        
-        return distancia;
     }
 }
