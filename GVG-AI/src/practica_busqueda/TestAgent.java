@@ -154,7 +154,7 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
         
-        /*
+        
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -163,7 +163,7 @@ public class TestAgent extends BaseAgent{
             // Veo si tengo el número suficiente de gemas
             
             if (this.getRemainingGems(stateObs) == 0){
-                pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
                 
                 plan = informacionPlan.plan;
             }
@@ -183,7 +183,7 @@ public class TestAgent extends BaseAgent{
                     if (player.getManhattanDistance(ob) < min){
                         // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
                         // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
 
                         if (informacionPlan.plan.size() > 0){
                             min = player.getManhattanDistance(ob);
@@ -204,7 +204,7 @@ public class TestAgent extends BaseAgent{
             System.out.println(gems.get(ind));
         
         Types.ACTIONS action = plan.poll();
-        */
+        
         
         // <Clústerización> -> Tarda alrededor de 0.08 ms
         
@@ -233,8 +233,6 @@ public class TestAgent extends BaseAgent{
                 System.out.print('\n');
             }
         }
-        
-        Types.ACTIONS action = ACTIONS.ACTION_NIL;
         
         return action;
     }
@@ -331,7 +329,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaArriba),
                                                         Orientation.N, acciones, casillaArriba, nodoActual));
                 }
                 
@@ -351,7 +349,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaAbajo),
                                                         Orientation.S, acciones, casillaAbajo, nodoActual));
                 }
                 
@@ -373,7 +371,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaIzquierda),
                                                         Orientation.W, acciones, casillaIzquierda, nodoActual));
                 }
                 
@@ -395,7 +393,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(observacionActual),
+                                                        objetivo.getManhattanDistance(casillaDerecha),
                                                         Orientation.E, acciones, casillaDerecha, nodoActual));
                 }
                 
