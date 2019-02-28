@@ -5,7 +5,7 @@ import core.game.StateObservation;
 
 import java.util.ArrayList;
 
-public class Node implements Comparable<Node>{
+class Node implements Comparable<Node>{
     private int costeG;
     private int costeH;
     private int costeF;
@@ -15,8 +15,8 @@ public class Node implements Comparable<Node>{
     private PlayerObservation jugador;
     private Node padre;
 
-    public Node(int costeG, int costeH, Types.ACTIONS accion, StateObservation estado,
-                ArrayList<Observation> listaGemas, PlayerObservation jugador, Node padre) {
+    Node(int costeG, int costeH, Types.ACTIONS accion, StateObservation estado,
+         ArrayList<Observation> listaGemas, PlayerObservation jugador, Node padre) {
         this.costeG = costeG;
         this.costeH = costeH;
         this.costeF = costeG + costeH;
@@ -27,12 +27,16 @@ public class Node implements Comparable<Node>{
         this.padre = padre;
     }
 
-    public Node getPadre() {
-        return padre;
+    Node getPadre() {
+        return this.padre;
     }
 
-    public StateObservation getEstado() {
-        return estado;
+    StateObservation getEstado() {
+        return this.estado;
+    }
+
+    Types.ACTIONS getAccion() {
+        return this.accion;
     }
 
     @Override

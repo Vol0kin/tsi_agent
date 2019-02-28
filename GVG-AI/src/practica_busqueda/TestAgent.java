@@ -6,6 +6,7 @@ import core.game.StateObservation;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
@@ -14,7 +15,7 @@ import java.util.PriorityQueue;
 import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.ListIterator;
-import ontology.Types.ACTIONS;
+import java.util.TreeSet;
 
 public class TestAgent extends BaseAgent{
     
@@ -428,8 +429,14 @@ public class TestAgent extends BaseAgent{
         
         return nuevoPlan;
     }
+
+    private PathInformation stateExplorer(int xGoal, int yGoal, StateObservation stateObs) {
+        PathInformation plan = new PathInformation();
+
+        return plan;
+    }
     
-    double enemyProbability(PathInformation plan, StateObservation stateObs) {
+    private double enemyProbability(PathInformation plan, StateObservation stateObs) {
         // Asociar pares enemigo:probabilidad
         Map<Observation, Double> probabilidadesEnemigos = new HashMap<>();
         
