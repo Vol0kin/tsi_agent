@@ -165,7 +165,7 @@ public class TestAgent extends BaseAgent{
             // Veo si tengo el número suficiente de gemas
             
             if (this.getRemainingGems(stateObs) == 0){
-                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                informacionPlan = stateExplorer(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
                 
                 plan = informacionPlan.plan;
             }
@@ -185,7 +185,7 @@ public class TestAgent extends BaseAgent{
                     if (player.getManhattanDistance(ob) < min){
                         // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
                         // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+                        informacionPlan = stateExplorer(gems.get(i).getX(), gems.get(i).getY(), stateObs);
 
                         if (informacionPlan.plan.size() > 0){
                             min = player.getManhattanDistance(ob);
@@ -482,6 +482,7 @@ public class TestAgent extends BaseAgent{
                 int xActual = posJugador.getX(), yActual = posJugador.getY();
 
                 System.out.println("pos: " + xActual + " " + yActual);
+                System.out.println(observacion[xActual][yActual + 1]);
 
                 // Comprobar que acciones pueden ser aplicadas para que casillas
 
