@@ -165,7 +165,7 @@ public class TestAgent extends BaseAgent{
             // Veo si tengo el número suficiente de gemas
             
             if (this.getRemainingGems(stateObs) == 0){
-                informacionPlan = stateExplorer(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
                 
                 plan = informacionPlan.plan;
             }
@@ -185,7 +185,7 @@ public class TestAgent extends BaseAgent{
                     if (player.getManhattanDistance(ob) < min){
                         // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
                         // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        informacionPlan = stateExplorer(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
 
                         if (informacionPlan.plan.size() > 0){
                             min = player.getManhattanDistance(ob);

@@ -50,8 +50,7 @@ public class PathFinder {
         }
     }
 
-    // Lo he cambiado de private a public porque, si no, daba error
-    public void init()
+    private void init()
     {
         if(x_arrNeig == null)
         {
