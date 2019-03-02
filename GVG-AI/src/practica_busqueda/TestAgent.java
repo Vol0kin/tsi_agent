@@ -243,7 +243,7 @@ public class TestAgent extends BaseAgent{
     }
     
     // Cuando se proporcione una posicion inicial personalizada, se debe asignar una orientacion al personaje
-    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ) {   
+    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ){   
         // Plan a devolver
         PathInformation nuevoPlan = new PathInformation();
 
