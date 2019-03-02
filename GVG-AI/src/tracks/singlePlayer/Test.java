@@ -27,7 +27,7 @@ public class Test {
                 
                 // Mi controlador
                // String miControlador = "practica_busqueda.TestAgent";
-                String miControlador = "practica_busqueda.AgenteBug";
+                String miControlador = "practica_busqueda.TestAgent";
 		//Load available games
 		String spGamesCollection =  "examples/all_games_sp.csv";
 		String[][] games = Utils.readGames(spGamesCollection);

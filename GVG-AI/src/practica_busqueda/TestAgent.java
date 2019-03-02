@@ -434,7 +434,7 @@ public class TestAgent extends BaseAgent{
         PathInformation plan = new PathInformation();
         TreeSet<Node> listaAbiertos = new TreeSet<>();
         ArrayList<Node> listaCerrados = new ArrayList<>();
-        HashSet<BaseNode> lista = new HashSet<>();
+        HashSet<BaseNode> lista = new HashSet<>();          // lista para comprobar si un nodo ha sido explorado
 
         int accionesUsadas = 0;
 
@@ -447,13 +447,12 @@ public class TestAgent extends BaseAgent{
                   ABAJO = 2,
                   IZQUIERDA = 3,
                   PICAR = 4;
+
         final Types.ACTIONS[] listaAcciones = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT,
                                                Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT,
                                                Types.ACTIONS.ACTION_USE};
 
         boolean[] accionesAplicables;
-        System.out.println("Empieza");
-        System.out.println("x: " + xGoal + " y: " + yGoal);
         Node nodoActual;
         boolean encontradoObjetivo = false;
         PlayerObservation posJugador = this.getPlayer(stateObs);
@@ -461,6 +460,9 @@ public class TestAgent extends BaseAgent{
 
         listaAbiertos.add(new Node(accionesUsadas, posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
                             null, -1, stateObs, this.getGemsList(stateObs), posJugador, null ));
+
+        System.out.println("Empieza");
+        System.out.println("x: " + xGoal + " y: " + yGoal);
 
         while (!listaAbiertos.isEmpty() && !encontradoObjetivo) {
             System.out.println(accionesUsadas + " " + listaAbiertos.size());
@@ -486,9 +488,8 @@ public class TestAgent extends BaseAgent{
                 // Comprobar que acciones pueden ser aplicadas para que casillas
 
                 // Comprobar casilla de arriba
-                if (observacion[xActual][yActual - 1].get(0).getType() == null
-                    || (!observacion[xActual][yActual - 1].get(0).getType().equals(ROCA)
-                        && !observacion[xActual][yActual - 1].get(0).getType().equals(MURO))) {
+                if (!observacion[xActual][yActual - 1].get(0).getType().equals(ROCA)
+                        && !observacion[xActual][yActual - 1].get(0).getType().equals(MURO)) {
                     accionesAplicables[ARRIBA] = true;
 
                     if (posJugador.getOrientation().equals(Orientation.N)) {
@@ -497,9 +498,8 @@ public class TestAgent extends BaseAgent{
                 }
 
                 // Comprobar casilla a la derecha
-                if (observacion[xActual + 1][yActual].get(0).getType() == null
-                    || (!observacion[xActual + 1][yActual].get(0).getType().equals(ROCA)
-                        && !observacion[xActual + 1][yActual].get(0).getType().equals(MURO))) {
+                if (!observacion[xActual + 1][yActual].get(0).getType().equals(ROCA)
+                        && !observacion[xActual + 1][yActual].get(0).getType().equals(MURO)) {
                     accionesAplicables[DERECHA] = true;
 
                     if (posJugador.getOrientation().equals(Orientation.E)) {
@@ -508,9 +508,8 @@ public class TestAgent extends BaseAgent{
                 }
 
                 // Comprobar casilla de abajo
-                if (observacion[xActual][yActual + 1].get(0).getType() == null
-                        || (!observacion[xActual][yActual + 1].get(0).getType().equals(ROCA)
-                        && !observacion[xActual][yActual + 1].get(0).getType().equals(MURO))) {
+                if (!observacion[xActual][yActual + 1].get(0).getType().equals(ROCA)
+                        && !observacion[xActual][yActual + 1].get(0).getType().equals(MURO)) {
                     accionesAplicables[ABAJO] = true;
 
                     if (posJugador.getOrientation().equals(Orientation.S)) {
@@ -519,9 +518,8 @@ public class TestAgent extends BaseAgent{
                 }
 
                 // Comprobar casilla a la izquierda
-                if (observacion[xActual - 1][yActual].get(0).getType() == null
-                        || (!observacion[xActual - 1][yActual].get(0).getType().equals(ROCA)
-                        && !observacion[xActual - 1][yActual].get(0).getType().equals(MURO))) {
+                if (!observacion[xActual - 1][yActual].get(0).getType().equals(ROCA)
+                        && !observacion[xActual - 1][yActual].get(0).getType().equals(MURO)) {
                     accionesAplicables[IZQUIERDA] = true;
 
                     if (posJugador.getOrientation().equals(Orientation.W)) {
@@ -538,6 +536,7 @@ public class TestAgent extends BaseAgent{
 
                         observacion = this.getObservationGrid(forwardState);
 
+                        // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
                         if (lista.add(new BaseNode(nuevaPosJugador, listaAcciones[i]))) {
                             listaAbiertos.add(new Node(accionesUsadas,
                                     nuevaPosJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
