@@ -5,6 +5,7 @@ package practica_busqueda;
 import core.game.StateObservation;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
+import tools.Vector2d;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,14 +19,54 @@ import java.util.ListIterator;
 import java.util.TreeSet;
 import java.util.HashSet;
 
+import tools.pathfinder.*;
+
 public class TestAgent extends BaseAgent{
     
     private boolean primerTurno = true;
     PathInformation informacionPlan;
     
+    private PathFinder pf;
+    
     public TestAgent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
-        informacionPlan = new PathInformation();
+        //informacionPlan = new PathInformation();
+        
+        // Uso el pathFinder de GVG-AI para encontrar los caminos entre todas
+        // las casillas evitando los muros (el resto de casillas supongo que
+        // son atravesables)
+        
+        ArrayList<core.game.Observation>[] obstaculos = so.getImmovablePositions();
+        
+        ArrayList<Integer> tiposObs = new ArrayList<Integer>();
+        
+        for (ArrayList<core.game.Observation> obs : obstaculos ){
+            tiposObs.add(obs.get(0).obsID);
+            //System.out.println(obs.get(0).obsID);
+        }
+        
+        tiposObs . add (( int ) 'o' ) ;
+        
+        pf = new PathFinder ( tiposObs ) ;
+        
+        pf.VERBOSE = false;
+        
+        pf.run(so);
+        
+        //PlayerObservation jugador = this.getPlayer(so);
+        
+        //System.out.println(new Vector2d(jugador.getX(), jugador.getY()-2));
+        
+        /*ArrayList<tools.pathfinder.Node> camino = 
+            //pf.getPath(new Vector2d(jugador.getX()-2, jugador.getY()), new Vector2d(jugador.getX()-2, jugador.getY()-4));
+            //pf.getPath(new Vector2d(1, 6), new Vector2d(1, 4));
+            //pf.getPath(new Vector2d(1, 1), new Vector2d(10, 1));
+              pf.getPath(new Vector2d(21, 7), new Vector2d(23, 7));*/
+        
+        // La primera casilla del camino no la guarda! (solo guarda las casillas por las que pasa)
+        
+        /*for (int i = 0; i < camino.size(); i++)
+            System.out.println(camino.get(i).position);*/
     }
     
     @Override
@@ -155,7 +196,7 @@ public class TestAgent extends BaseAgent{
         
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
-        
+        /*
         
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
@@ -233,9 +274,9 @@ public class TestAgent extends BaseAgent{
                 }
                 System.out.print('\n');
             }
-        }
+        }*/
         
-        return action;
+        return Types.ACTIONS.ACTION_NIL;
     }
     
     private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
