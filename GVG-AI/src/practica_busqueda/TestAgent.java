@@ -192,14 +192,14 @@ public class TestAgent extends BaseAgent{
                             ind = i;
 
                             plan = informacionPlan.plan; // Guardo el plan para que no se borre al volver a hacer pathFinder
-                        }  
+                        }
                     }
 
                     i++;
                 }
             }
         }
-        
+
         System.out.println("Tam plan= " + plan.size());
         
         if (ind != -1)
@@ -432,6 +432,135 @@ public class TestAgent extends BaseAgent{
 
     private PathInformation stateExplorer(int xGoal, int yGoal, StateObservation stateObs) {
         PathInformation plan = new PathInformation();
+        PriorityQueue<Node> listaAbiertos = new PriorityQueue<>(
+                (Node n1, Node n2) -> n1.getCosteF() - n2.getCosteF());
+        ArrayList<Node> listaCerrados = new ArrayList<>();
+        HashSet<Node> listaExplorados = new HashSet<>();
+
+        int accionesUsadas = 0;
+
+        final ObservationType ROCA = ObservationType.BOULDER,
+                              MURO = ObservationType.WALL;
+
+        final int NUM_ACCIONES = 5,
+                ARRIBA = 0,
+                DERECHA = 1,
+                ABAJO = 2,
+                IZQUIERDA = 3,
+                PICAR = 4;
+
+        final Types.ACTIONS[] listaAcciones = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT,
+                Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT,
+                Types.ACTIONS.ACTION_USE};
+
+        boolean[] accionesAplicables;
+        Node nodoActual, nodoSucesor;
+        boolean encontradoObjetivo = false;
+        PlayerObservation posJugador = this.getPlayer(stateObs);
+        ArrayList<Observation>[][] observacion = this.getObservationGrid(stateObs);
+
+        nodoSucesor = new Node(accionesUsadas, posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
+                null, -1, stateObs, this.getGemsList(stateObs),
+                this.getBouldersList(stateObs), posJugador, null);
+
+        listaAbiertos.add(nodoSucesor);
+        //listaExplorados.add(nodoSucesor);
+
+        while (!encontradoObjetivo && !listaAbiertos.isEmpty()) {
+            System.out.println(accionesUsadas);
+            System.out.println("Tam cola: " + listaAbiertos.size());
+            System.out.println("Nodos unicos visitados: " + listaExplorados.size());
+            accionesUsadas++;
+            nodoActual = listaAbiertos.poll();
+            PlayerObservation jugador = nodoActual.getJugador();
+            System.out.println();
+
+            if (jugador.getX() == xGoal && jugador.getY() == yGoal) {
+                encontradoObjetivo = true;
+                System.out.println("Encontrado objetivo");
+            } else {
+                StateObservation estadoObservacion = nodoActual.getEstado();
+                accionesAplicables = new boolean[] {false, false, false, false, false};
+
+                observacion = this.getObservationGrid(estadoObservacion);
+                int xActual = jugador.getX(), yActual = jugador.getY();
+
+                // Comprobar que acciones pueden ser aplicadas para que casillas
+
+                // Comprobar casilla de arriba
+                if (!observacion[xActual][yActual - 1].get(0).getType().equals(ROCA)
+                        && !observacion[xActual][yActual - 1].get(0).getType().equals(MURO)) {
+                    accionesAplicables[ARRIBA] = true;
+
+                    if (posJugador.getOrientation().equals(Orientation.N)) {
+                        accionesAplicables[PICAR] = true;
+                    }
+                }
+
+                // Comprobar casilla a la derecha
+                if (!observacion[xActual + 1][yActual].get(0).getType().equals(ROCA)
+                        && !observacion[xActual + 1][yActual].get(0).getType().equals(MURO)) {
+                    accionesAplicables[DERECHA] = true;
+
+                    if (posJugador.getOrientation().equals(Orientation.E)) {
+                        accionesAplicables[PICAR] = true;
+                    }
+                }
+
+                // Comprobar casilla de abajo
+                if (!observacion[xActual][yActual + 1].get(0).getType().equals(ROCA)
+                        && !observacion[xActual][yActual + 1].get(0).getType().equals(MURO)) {
+                    accionesAplicables[ABAJO] = true;
+
+                    if (posJugador.getOrientation().equals(Orientation.S)) {
+                        accionesAplicables[PICAR] = true;
+                    }
+                }
+
+                // Comprobar casilla a la izquierda
+                if (!observacion[xActual - 1][yActual].get(0).getType().equals(ROCA)
+                        && !observacion[xActual - 1][yActual].get(0).getType().equals(MURO)) {
+                    accionesAplicables[IZQUIERDA] = true;
+
+                    if (posJugador.getOrientation().equals(Orientation.W)) {
+                        accionesAplicables[PICAR] = true;
+                    }
+                }
+
+                for (int i = 0; i < NUM_ACCIONES; i++) {
+                    if (accionesAplicables[i]) {
+                        StateObservation forwardState = estadoObservacion.copy();
+                        forwardState.advance(listaAcciones[i]);
+
+                        PlayerObservation nuevaPosJugador = this.getPlayer(forwardState);
+                        System.out.println("\t Pos jugador: " + nuevaPosJugador);
+
+                        observacion = this.getObservationGrid(forwardState);
+                        nodoSucesor = new Node(accionesUsadas, nuevaPosJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
+                                                listaAcciones[i], i, forwardState, this.getGemsList(forwardState),
+                                                this.getBouldersList(forwardState), nuevaPosJugador, nodoActual);
+
+                        // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
+                        if (listaExplorados.add(nodoSucesor)) {
+                            System.out.println("\taccion: " + listaAcciones[i]);
+                            listaAbiertos.add(nodoSucesor);
+                        }
+                    }
+                }
+            }
+
+            listaCerrados.add(nodoActual);
+        }
+
+
+
+
+
+        return plan;
+    }
+/*
+    private PathInformation stateExplorer(int xGoal, int yGoal, StateObservation stateObs) {
+        PathInformation plan = new PathInformation();
         TreeSet<Node> listaAbiertos = new TreeSet<>();
         ArrayList<Node> listaCerrados = new ArrayList<>();
         HashSet<BaseNode> lista = new HashSet<>();          // lista para comprobar si un nodo ha sido explorado
@@ -553,7 +682,7 @@ public class TestAgent extends BaseAgent{
 
 
         return plan;
-    }
+    }*/
     
     private double enemyProbability(PathInformation plan, StateObservation stateObs) {
         // Asociar pares enemigo:probabilidad
