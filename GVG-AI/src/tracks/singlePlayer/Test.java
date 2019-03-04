@@ -26,7 +26,6 @@ public class Test {
 		String sampleOLETSController = "tracks.singlePlayer.advanced.olets.Agent";
                 
                 // Mi controlador
-               // String miControlador = "practica_busqueda.TestAgent";
                 String miControlador = "practica_busqueda.TestAgent";
 		//Load available games
 		String spGamesCollection =  "examples/all_games_sp.csv";
