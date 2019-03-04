@@ -110,11 +110,11 @@ class Node implements Comparable<Node>{
             boulderSumY += boulder.getY();
         }
 
-        int boulderSum = boulderSumX + boulderSumY;
+        int boulderSum = (boulderSumX + boulderSumY) / 13;
 
         stringCode += boulderSum;
 
-        System.out.println(stringCode);
+       // System.out.println(stringCode);
 
         // Parse the String code and return it
         int integerCode = Integer.parseInt(stringCode);

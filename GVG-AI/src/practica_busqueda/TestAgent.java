@@ -196,12 +196,18 @@ public class TestAgent extends BaseAgent{
         
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
-        /*
+
         
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-        
+        informacionPlan = stateExplorer(7, 1, stateObs);
+
+        for (Types.ACTIONS accion: informacionPlan.plan) {
+            System.out.println(accion);
+        }
+
+        /*
         if (plan.size() == 0){
             // Veo si tengo el número suficiente de gemas
             
@@ -276,7 +282,7 @@ public class TestAgent extends BaseAgent{
             }
         }*/
         
-        return Types.ACTIONS.ACTION_NIL;
+        return informacionPlan.plan.pollFirst();
     }
     
     private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
@@ -508,24 +514,23 @@ public class TestAgent extends BaseAgent{
         //listaExplorados.add(nodoSucesor);
 
         while (!encontradoObjetivo && !listaAbiertos.isEmpty()) {
-            System.out.println(accionesUsadas);
-            System.out.println("Tam cola: " + listaAbiertos.size());
-            System.out.println("Nodos unicos visitados: " + listaExplorados.size());
+            //System.out.println(accionesUsadas);
+            //System.out.println("Tam cola: " + listaAbiertos.size());
+           // System.out.println("Nodos unicos visitados: " + listaExplorados.size());
             accionesUsadas++;
             nodoActual = listaAbiertos.poll();
             PlayerObservation jugador = nodoActual.getJugador();
-            System.out.println();
 
             if (jugador.getX() == xGoal && jugador.getY() == yGoal) {
                 encontradoObjetivo = true;
-                System.out.println("Encontrado objetivo");
+                //System.out.println("Encontrado objetivo");
             } else {
                 StateObservation estadoObservacion = nodoActual.getEstado();
-                accionesAplicables = new boolean[] {false, false, false, false, false};
+                accionesAplicables = new boolean[] {true, true, true, true, true};
 
                 observacion = this.getObservationGrid(estadoObservacion);
                 int xActual = jugador.getX(), yActual = jugador.getY();
-
+/*
                 // Comprobar que acciones pueden ser aplicadas para que casillas
 
                 // Comprobar casilla de arriba
@@ -566,7 +571,7 @@ public class TestAgent extends BaseAgent{
                     if (posJugador.getOrientation().equals(Orientation.W)) {
                         accionesAplicables[PICAR] = true;
                     }
-                }
+                }*/
 
                 for (int i = 0; i < NUM_ACCIONES; i++) {
                     if (accionesAplicables[i]) {
@@ -574,18 +579,21 @@ public class TestAgent extends BaseAgent{
                         forwardState.advance(listaAcciones[i]);
 
                         PlayerObservation nuevaPosJugador = this.getPlayer(forwardState);
-                        System.out.println("\t Pos jugador: " + nuevaPosJugador);
+                       // System.out.println("\t Pos jugador: " + nuevaPosJugador);
 
                         observacion = this.getObservationGrid(forwardState);
                         nodoSucesor = new Node(accionesUsadas, nuevaPosJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
                                                 listaAcciones[i], i, forwardState, this.getGemsList(forwardState),
                                                 this.getBouldersList(forwardState), nuevaPosJugador, nodoActual);
-
-                        // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
-                        if (listaExplorados.add(nodoSucesor)) {
-                            System.out.println("\taccion: " + listaAcciones[i]);
-                            listaAbiertos.add(nodoSucesor);
+                        if (!nuevaPosJugador.hasDied()) {
+                            System.out.println(nuevaPosJugador);
+                            // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
+                            if (listaExplorados.add(nodoSucesor)) {
+                               // System.out.println("\taccion: " + listaAcciones[i]);
+                                listaAbiertos.add(nodoSucesor);
+                            }
                         }
+
                     }
                 }
             }
@@ -594,136 +602,31 @@ public class TestAgent extends BaseAgent{
         }
 
 
+        // Obtener la casilla del objetivo
+        Node recorrido = listaCerrados.get(listaCerrados.size() - 1);
 
+        // Guardar distancia recorrida  y acciones en la informacion del plan
+        if (encontradoObjetivo) {
+            System.out.println("Encontrado objetivo");
+            //nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
+
+            while (recorrido.getPadre() != null) {
+                // Aniadir casillas recorridas
+                plan.listaCasillas.add(0, recorrido.getJugador());
+
+                // Aniadir secuencia de acciones realizadas
+                plan.plan.addFirst(recorrido.getAccion());
+                recorrido = recorrido.getPadre();
+            }
+
+            // Aniadir casilla inicial
+            plan.listaCasillas.add(0, recorrido.getJugador());
+            plan.distancia = plan.listaCasillas.size();
+        }
 
 
         return plan;
     }
-/*
-    private PathInformation stateExplorer(int xGoal, int yGoal, StateObservation stateObs) {
-        PathInformation plan = new PathInformation();
-        TreeSet<Node> listaAbiertos = new TreeSet<>();
-        ArrayList<Node> listaCerrados = new ArrayList<>();
-        HashSet<BaseNode> lista = new HashSet<>();          // lista para comprobar si un nodo ha sido explorado
-
-        int accionesUsadas = 0;
-
-        final ObservationType ROCA = ObservationType.BOULDER,
-                              MURO = ObservationType.WALL;
-
-        final int NUM_ACCIONES = 5,
-                  ARRIBA = 0,
-                  DERECHA = 1,
-                  ABAJO = 2,
-                  IZQUIERDA = 3,
-                  PICAR = 4;
-
-        final Types.ACTIONS[] listaAcciones = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT,
-                                               Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT,
-                                               Types.ACTIONS.ACTION_USE};
-
-        boolean[] accionesAplicables;
-        Node nodoActual;
-        boolean encontradoObjetivo = false;
-        PlayerObservation posJugador = this.getPlayer(stateObs);
-        ArrayList<Observation>[][] observacion = this.getObservationGrid(stateObs);
-
-        listaAbiertos.add(new Node(accionesUsadas, posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
-                            null, -1, stateObs, this.getGemsList(stateObs), posJugador, null ));
-
-        System.out.println("Empieza");
-        System.out.println("x: " + xGoal + " y: " + yGoal);
-
-        while (!listaAbiertos.isEmpty() && !encontradoObjetivo) {
-            System.out.println(accionesUsadas + " " + listaAbiertos.size());
-            accionesUsadas++;
-            nodoActual = listaAbiertos.pollFirst();
-            System.out.println(nodoActual.getJugador());
-
-            if (xGoal == nodoActual.getJugador().getX() && yGoal == nodoActual.getJugador().getY()) {
-                encontradoObjetivo = true;
-                System.out.println("Encontrado el objetivo");
-            } else {
-                StateObservation estadoObservacion = nodoActual.getEstado();
-                accionesAplicables = new boolean[] {false, false, false, false, false};
-
-                posJugador = this.getPlayer(estadoObservacion);
-                observacion = this.getObservationGrid(estadoObservacion);
-
-                int xActual = posJugador.getX(), yActual = posJugador.getY();
-
-                System.out.println("pos: " + xActual + " " + yActual);
-                System.out.println(observacion[xActual][yActual + 1]);
-
-                // Comprobar que acciones pueden ser aplicadas para que casillas
-
-                // Comprobar casilla de arriba
-                if (!observacion[xActual][yActual - 1].get(0).getType().equals(ROCA)
-                        && !observacion[xActual][yActual - 1].get(0).getType().equals(MURO)) {
-                    accionesAplicables[ARRIBA] = true;
-
-                    if (posJugador.getOrientation().equals(Orientation.N)) {
-                        accionesAplicables[PICAR] = true;
-                    }
-                }
-
-                // Comprobar casilla a la derecha
-                if (!observacion[xActual + 1][yActual].get(0).getType().equals(ROCA)
-                        && !observacion[xActual + 1][yActual].get(0).getType().equals(MURO)) {
-                    accionesAplicables[DERECHA] = true;
-
-                    if (posJugador.getOrientation().equals(Orientation.E)) {
-                        accionesAplicables[PICAR] = true;
-                    }
-                }
-
-                // Comprobar casilla de abajo
-                if (!observacion[xActual][yActual + 1].get(0).getType().equals(ROCA)
-                        && !observacion[xActual][yActual + 1].get(0).getType().equals(MURO)) {
-                    accionesAplicables[ABAJO] = true;
-
-                    if (posJugador.getOrientation().equals(Orientation.S)) {
-                        accionesAplicables[PICAR] = true;
-                    }
-                }
-
-                // Comprobar casilla a la izquierda
-                if (!observacion[xActual - 1][yActual].get(0).getType().equals(ROCA)
-                        && !observacion[xActual - 1][yActual].get(0).getType().equals(MURO)) {
-                    accionesAplicables[IZQUIERDA] = true;
-
-                    if (posJugador.getOrientation().equals(Orientation.W)) {
-                        accionesAplicables[PICAR] = true;
-                    }
-                }
-
-                for (int i = 0; i < NUM_ACCIONES; i++) {
-                    if (accionesAplicables[i]) {
-                        StateObservation forwardState = estadoObservacion.copy();
-                        forwardState.advance(listaAcciones[i]);
-                        PlayerObservation nuevaPosJugador = this.getPlayer(forwardState);
-                        System.out.println(nuevaPosJugador);
-
-                        observacion = this.getObservationGrid(forwardState);
-
-                        // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
-                        if (lista.add(new BaseNode(nuevaPosJugador, listaAcciones[i]))) {
-                            listaAbiertos.add(new Node(accionesUsadas,
-                                    nuevaPosJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
-                                    listaAcciones[i], i, forwardState, this.getGemsList(forwardState),
-                                    nuevaPosJugador, nodoActual));
-                        }
-                    }
-                }
-            }
-
-            listaCerrados.add(nodoActual);
-        }
-
-
-
-        return plan;
-    }*/
     
     private double enemyProbability(PathInformation plan, StateObservation stateObs) {
         // Asociar pares enemigo:probabilidad
