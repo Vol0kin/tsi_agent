@@ -3,8 +3,12 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/home/aeryan/Escritorio/tsi_agent/GVG-AI/src/tracks/singlePlayer/Test.java</file>
-            <file>file:/home/aeryan/Escritorio/tsi_agent/GVG-AI/src/practica_busqueda/TestAgent.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/practica_busqueda/BaseAgent.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/practica_busqueda/Node.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/tracks/singlePlayer/Test.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/practica_busqueda/TestAgent.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/practica_busqueda/ObservationType.java</file>
+            <file>file:/C:/Users/carlo/OneDrive/Documentos/NetBeansProjects/tsi_agent/GVG-AI/src/practica_busqueda/Observation.java</file>
         </group>
     </open-files>
 </project-private>

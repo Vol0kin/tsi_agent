@@ -53,6 +53,7 @@ public class TestAgent extends BaseAgent{
         
         pf.run(so);
         
+        
         //PlayerObservation jugador = this.getPlayer(so);
         
         //System.out.println(new Vector2d(jugador.getX(), jugador.getY()-2));
@@ -197,7 +198,7 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
 
-        
+        /*
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -205,7 +206,7 @@ public class TestAgent extends BaseAgent{
 
         for (Types.ACTIONS accion: informacionPlan.plan) {
             System.out.println(accion);
-        }
+        }*/
 
         /*
         if (plan.size() == 0){
@@ -282,7 +283,45 @@ public class TestAgent extends BaseAgent{
             }
         }*/
         
-        return informacionPlan.plan.pollFirst();
+        //return informacionPlan.plan.pollFirst();
+        
+        /*System.out.println("Prueba de distancias usando getHeuristicDistance: ");
+        System.out.println(this.getHeuristicDistance(5, 5, 5, 5));
+        System.out.println(this.getHeuristicDistance(0, 0, 5, 0)); //No, porque hay muro
+        System.out.println(this.getHeuristicDistance(-2, -2, -5, 100)); //No, porque es una posición inválida
+        System.out.println(this.getHeuristicDistance(10, 4, 10, 10));
+        System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
+        System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
+        
+        return Types.ACTIONS.ACTION_DOWN;
+    }
+        
+    // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
+    // dos casillas (atraviesa las rocas pero no los muros)
+    // DA EXCEPCION SI LA POSICION INICIAL O FINAL ESTA SOBRE UN MURO!
+    
+    private int getHeuristicDistance(int xStart, int yStart, int xGoal, int yGoal){
+        
+        if (xStart == xGoal && yStart == yGoal)
+            return 0;
+        
+        // Obtengo la distancia que me da el pathFinder -> número de casillas del array
+        ArrayList<tools.pathfinder.Node> camino = 
+                pf.getPath(new Vector2d(xStart, yStart), new Vector2d(xGoal, yGoal));
+        
+        int distance = camino.size();
+        
+        // Compruebo si existe camino
+        if (distance == 0)
+            return -1;
+        
+        // Como sé que si me tengo que mover tanto en X como en Y voy a tener que dar un
+        // giro como mínimo, en ese caso añado uno a la distancia
+        
+        if (xStart != xGoal && yStart != yGoal)
+            distance++;
+        
+        return distance;
     }
     
     private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
