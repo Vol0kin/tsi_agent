@@ -198,22 +198,23 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
 
-        /*
+
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-        informacionPlan = stateExplorer(7, 1, stateObs);
+        informacionPlan = stateExplorer(7, 9, stateObs);
+        plan = informacionPlan.plan;
 
         for (Types.ACTIONS accion: informacionPlan.plan) {
             System.out.println(accion);
-        }*/
+        }
 
-        /*
+/*
         if (plan.size() == 0){
             // Veo si tengo el número suficiente de gemas
             
             if (this.getRemainingGems(stateObs) == 0){
-                informacionPlan = stateExplorer(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
+                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
                 
                 plan = informacionPlan.plan;
             }
@@ -233,7 +234,7 @@ public class TestAgent extends BaseAgent{
                     if (player.getManhattanDistance(ob) < min){
                         // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
                         // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        informacionPlan = stateExplorer(gems.get(i).getX(), gems.get(i).getY(), stateObs);
+                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
 
                         if (informacionPlan.plan.size() > 0){
                             min = player.getManhattanDistance(ob);
@@ -253,7 +254,7 @@ public class TestAgent extends BaseAgent{
         if (ind != -1)
             System.out.println(gems.get(ind));
         
-        Types.ACTIONS action = plan.poll();
+        //Types.ACTIONS action = plan.poll();
         
         // <Clústerización> -> Tarda alrededor de 0.08 ms
         
@@ -283,7 +284,7 @@ public class TestAgent extends BaseAgent{
             }
         }*/
         
-        //return informacionPlan.plan.pollFirst();
+        return plan.pollFirst();
         
         /*System.out.println("Prueba de distancias usando getHeuristicDistance: ");
         System.out.println(this.getHeuristicDistance(5, 5, 5, 5));
@@ -293,7 +294,7 @@ public class TestAgent extends BaseAgent{
         System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
         System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
         
-        return Types.ACTIONS.ACTION_DOWN;
+        //return Types.ACTIONS.ACTION_DOWN;
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -301,7 +302,7 @@ public class TestAgent extends BaseAgent{
     // DA EXCEPCION SI LA POSICION INICIAL O FINAL ESTA SOBRE UN MURO!
     
     private int getHeuristicDistance(int xStart, int yStart, int xGoal, int yGoal){
-        
+        //System.out.println(xStart + " " + yStart);
         if (xStart == xGoal && yStart == yGoal)
             return 0;
         
@@ -322,6 +323,19 @@ public class TestAgent extends BaseAgent{
             distance++;
         
         return distance;
+    }
+
+    /*
+     * Sobrecarga del metodo getHeuristicDistance
+     * Acepta dos observacions y calcula la distancia entre ellos
+     *
+     * @param obs1 Observacion inicial
+     * @param obs2 Observacion final
+     *
+     * @return Estimacion heuristica de la distnacia entre las dos observaciones
+     */
+    private int getHeuristicDistance(Observation obs1, Observation obs2) {
+        return getHeuristicDistance(obs1.getX(), obs1.getY(), obs2.getX(), obs2.getY());
     }
     
     private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
@@ -369,7 +383,7 @@ public class TestAgent extends BaseAgent{
         
         boolean objetivoEncontrado = false;
         
-        listaAbiertos.add(new CasillaCamino(0, objetivo.getManhattanDistance(posInicial),
+        listaAbiertos.add(new CasillaCamino(0, this.getHeuristicDistance(posInicial, objetivo),
                                             posInicial.getOrientation(), null, posInicial, null));
         
         mapaExplorado[posInicial.getX()][posInicial.getY()] = true;
@@ -416,7 +430,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(casillaArriba),
+                                                        this.getHeuristicDistance(casillaArriba, objetivo),
                                                         Orientation.N, acciones, casillaArriba, nodoActual));
                 }
                 
@@ -436,7 +450,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(casillaAbajo),
+                                                        this.getHeuristicDistance(casillaAbajo, objetivo),
                                                         Orientation.S, acciones, casillaAbajo, nodoActual));
                 }
                 
@@ -458,7 +472,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(casillaIzquierda),
+                                                        this.getHeuristicDistance(casillaIzquierda, objetivo),
                                                         Orientation.W, acciones, casillaIzquierda, nodoActual));
                 }
                 
@@ -480,7 +494,7 @@ public class TestAgent extends BaseAgent{
                     }
                     
                     listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        objetivo.getManhattanDistance(casillaDerecha),
+                                                        this.getHeuristicDistance(casillaDerecha, objetivo),
                                                         Orientation.E, acciones, casillaDerecha, nodoActual));
                 }
                 
@@ -523,8 +537,6 @@ public class TestAgent extends BaseAgent{
         ArrayList<Node> listaCerrados = new ArrayList<>();
         HashSet<Node> listaExplorados = new HashSet<>();
 
-        int accionesUsadas = 0;
-
         final ObservationType ROCA = ObservationType.BOULDER,
                               MURO = ObservationType.WALL;
 
@@ -545,31 +557,30 @@ public class TestAgent extends BaseAgent{
         PlayerObservation posJugador = this.getPlayer(stateObs);
         ArrayList<Observation>[][] observacion = this.getObservationGrid(stateObs);
 
-        nodoSucesor = new Node(accionesUsadas, posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
-                null, -1, stateObs, this.getGemsList(stateObs),
-                this.getBouldersList(stateObs), posJugador, null);
+        nodoSucesor = new Node(0,
+                                posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
+                         null,
+                                stateObs,
+                                this.getGemsList(stateObs),
+                                this.getBouldersList(stateObs),
+                                posJugador,
+                         null);
 
         listaAbiertos.add(nodoSucesor);
-        //listaExplorados.add(nodoSucesor);
 
         while (!encontradoObjetivo && !listaAbiertos.isEmpty()) {
-            //System.out.println(accionesUsadas);
-            //System.out.println("Tam cola: " + listaAbiertos.size());
-           // System.out.println("Nodos unicos visitados: " + listaExplorados.size());
-            accionesUsadas++;
             nodoActual = listaAbiertos.poll();
             PlayerObservation jugador = nodoActual.getJugador();
 
             if (jugador.getX() == xGoal && jugador.getY() == yGoal) {
                 encontradoObjetivo = true;
-                //System.out.println("Encontrado objetivo");
             } else {
                 StateObservation estadoObservacion = nodoActual.getEstado();
                 accionesAplicables = new boolean[] {true, true, true, true, true};
 
                 observacion = this.getObservationGrid(estadoObservacion);
                 int xActual = jugador.getX(), yActual = jugador.getY();
-/*
+
                 // Comprobar que acciones pueden ser aplicadas para que casillas
 
                 // Comprobar casilla de arriba
@@ -610,7 +621,7 @@ public class TestAgent extends BaseAgent{
                     if (posJugador.getOrientation().equals(Orientation.W)) {
                         accionesAplicables[PICAR] = true;
                     }
-                }*/
+                }
 
                 for (int i = 0; i < NUM_ACCIONES; i++) {
                     if (accionesAplicables[i]) {
@@ -621,18 +632,22 @@ public class TestAgent extends BaseAgent{
                        // System.out.println("\t Pos jugador: " + nuevaPosJugador);
 
                         observacion = this.getObservationGrid(forwardState);
-                        nodoSucesor = new Node(accionesUsadas, nuevaPosJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
-                                                listaAcciones[i], i, forwardState, this.getGemsList(forwardState),
-                                                this.getBouldersList(forwardState), nuevaPosJugador, nodoActual);
                         if (!nuevaPosJugador.hasDied()) {
-                            System.out.println(nuevaPosJugador);
+                            nodoSucesor = new Node(nodoActual.getCosteG() + 1,
+                                                    this.getHeuristicDistance(nuevaPosJugador, observacion[xGoal][yGoal].get(0)),
+                                                    listaAcciones[i],
+                                                    forwardState,
+                                                    this.getGemsList(forwardState),
+                                                    this.getBouldersList(forwardState),
+                                                    nuevaPosJugador,
+                                                    nodoActual);
+                            System.out.println(nodoSucesor);
                             // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
                             if (listaExplorados.add(nodoSucesor)) {
-                               // System.out.println("\taccion: " + listaAcciones[i]);
+                                // System.out.println("\taccion: " + listaAcciones[i]);
                                 listaAbiertos.add(nodoSucesor);
                             }
                         }
-
                     }
                 }
             }
@@ -661,6 +676,8 @@ public class TestAgent extends BaseAgent{
             // Aniadir casilla inicial
             plan.listaCasillas.add(0, recorrido.getJugador());
             plan.distancia = plan.listaCasillas.size();
+        } else {
+            System.out.println("no encontrado");
         }
 
 

@@ -10,20 +10,18 @@ class Node implements Comparable<Node>{
     private int costeH;
     private int costeF;
     private Types.ACTIONS accion;
-    private int numAccion;
     private StateObservation estado;
     private ArrayList<Observation> listaGemas;
     private ArrayList<Observation> listaRocas;
     private PlayerObservation jugador;
     private Node padre;
 
-    Node(int costeG, int costeH, Types.ACTIONS accion, int numAccion, StateObservation estado,
+    Node(int costeG, int costeH, Types.ACTIONS accion, StateObservation estado,
          ArrayList<Observation> listaGemas, ArrayList<Observation> listaRocas, PlayerObservation jugador, Node padre) {
         this.costeG = costeG;
         this.costeH = costeH;
         this.costeF = costeG + costeH;
         this.accion = accion;
-        this.numAccion = numAccion;
         this.jugador = jugador;
         this.estado = estado;
         this.listaGemas = listaGemas;
@@ -50,6 +48,8 @@ class Node implements Comparable<Node>{
     int getCosteF() {
         return this.costeF;
     }
+
+    int getCosteG() { return this.costeG; }
 
     @Override
     public boolean equals(Object otherNode) {
@@ -101,7 +101,7 @@ class Node implements Comparable<Node>{
 
         // Add to the code the remaining number of gems
         stringCode += listaGemas.size();
-
+/*
         // Sum x and y position of all the boulders
         int boulderSumX = 0, boulderSumY = 0;
 
@@ -112,7 +112,7 @@ class Node implements Comparable<Node>{
 
         int boulderSum = (boulderSumX + boulderSumY) / 13;
 
-        stringCode += boulderSum;
+        stringCode += boulderSum;*/
 
        // System.out.println(stringCode);
 
@@ -127,5 +127,10 @@ class Node implements Comparable<Node>{
         int difCosteF = this.costeF - otherNode.costeF;
 
         return difCosteF;
+    }
+
+    @Override
+    public String toString() {
+        return "costeG: " + costeG + " costeH: " + costeH + " costeF: " + costeF + " jugador: " + jugador.toString() + " accion: " + this.accion;
     }
 }
