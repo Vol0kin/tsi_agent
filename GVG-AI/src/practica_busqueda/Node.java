@@ -68,7 +68,7 @@ class Node implements Comparable<Node>{
         }
 
         if (listaGemas.size() == node2.listaGemas.size()
-            && this.jugador.equals(node2.jugador) && this.listaRocas.size() == node2.listaRocas.size()) {
+                && this.jugador.equals(node2.jugador)) {
             return true;
         } else {
             return false;

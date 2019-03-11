@@ -202,7 +202,7 @@ public class TestAgent extends BaseAgent{
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-        informacionPlan = stateExplorer(7, 9, stateObs);
+        informacionPlan = stateExplorer(5, 3, stateObs);
         plan = informacionPlan.plan;
 
         for (Types.ACTIONS accion: informacionPlan.plan) {
@@ -544,18 +544,18 @@ public class TestAgent extends BaseAgent{
                 ARRIBA = 0,
                 DERECHA = 1,
                 ABAJO = 2,
-                IZQUIERDA = 3,
-                PICAR = 4;
+                IZQUIERDA = 3;
 
         final Types.ACTIONS[] listaAcciones = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT,
-                Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT,
-                Types.ACTIONS.ACTION_USE};
+                Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT};
 
-        boolean[] accionesAplicables;
+
         Node nodoActual, nodoSucesor;
         boolean encontradoObjetivo = false;
         PlayerObservation posJugador = this.getPlayer(stateObs);
         ArrayList<Observation>[][] observacion = this.getObservationGrid(stateObs);
+
+        boolean cogerGema = observacion[xGoal][yGoal].get(0).getType().equals(ObservationType.GEM);
 
         nodoSucesor = new Node(0,
                                 posJugador.getManhattanDistance(observacion[xGoal][yGoal].get(0)),
@@ -571,18 +571,22 @@ public class TestAgent extends BaseAgent{
         while (!encontradoObjetivo && !listaAbiertos.isEmpty()) {
             nodoActual = listaAbiertos.poll();
             PlayerObservation jugador = nodoActual.getJugador();
+            StateObservation estadoObservacion = nodoActual.getEstado();
+            observacion = this.getObservationGrid(estadoObservacion);
 
-            if (jugador.getX() == xGoal && jugador.getY() == yGoal) {
+            //System.out.println(nodoActual);
+
+            if (cogerGema && ((jugador.getX() == xGoal && jugador.getY() == yGoal) ||
+                  !observacion[xGoal][yGoal].get(0).getType().equals(ObservationType.GEM))) {
+                encontradoObjetivo = true;
+            } else if (!cogerGema && jugador.getX() == xGoal && jugador.getY() == yGoal){
                 encontradoObjetivo = true;
             } else {
-                StateObservation estadoObservacion = nodoActual.getEstado();
-                accionesAplicables = new boolean[] {true, true, true, true, true};
 
-                observacion = this.getObservationGrid(estadoObservacion);
                 int xActual = jugador.getX(), yActual = jugador.getY();
 
                 // Comprobar que acciones pueden ser aplicadas para que casillas
-
+/*
                 // Comprobar casilla de arriba
                 if (!observacion[xActual][yActual - 1].get(0).getType().equals(ROCA)
                         && !observacion[xActual][yActual - 1].get(0).getType().equals(MURO)) {
@@ -621,19 +625,18 @@ public class TestAgent extends BaseAgent{
                     if (posJugador.getOrientation().equals(Orientation.W)) {
                         accionesAplicables[PICAR] = true;
                     }
-                }
+                }*/
 
-                for (int i = 0; i < NUM_ACCIONES; i++) {
-                    if (accionesAplicables[i]) {
-                        StateObservation forwardState = estadoObservacion.copy();
-                        forwardState.advance(listaAcciones[i]);
+                for (int i = 0; i < 4; i++) {
+                    StateObservation forwardState = estadoObservacion.copy();
+                    forwardState.advance(listaAcciones[i]);
 
-                        PlayerObservation nuevaPosJugador = this.getPlayer(forwardState);
-                       // System.out.println("\t Pos jugador: " + nuevaPosJugador);
+                    PlayerObservation nuevaPosJugador = this.getPlayer(forwardState);
+                    // System.out.println("\t Pos jugador: " + nuevaPosJugador);
 
-                        observacion = this.getObservationGrid(forwardState);
-                        if (!nuevaPosJugador.hasDied()) {
-                            nodoSucesor = new Node(nodoActual.getCosteG() + 1,
+                    observacion = this.getObservationGrid(forwardState);
+                    if (!nuevaPosJugador.hasDied()) {
+                        nodoSucesor = new Node(nodoActual.getCosteG() + 1,
                                                     this.getHeuristicDistance(nuevaPosJugador, observacion[xGoal][yGoal].get(0)),
                                                     listaAcciones[i],
                                                     forwardState,
@@ -641,12 +644,11 @@ public class TestAgent extends BaseAgent{
                                                     this.getBouldersList(forwardState),
                                                     nuevaPosJugador,
                                                     nodoActual);
-                            System.out.println(nodoSucesor);
-                            // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
-                            if (listaExplorados.add(nodoSucesor)) {
-                                // System.out.println("\taccion: " + listaAcciones[i]);
-                                listaAbiertos.add(nodoSucesor);
-                            }
+                        //System.out.println(nodoSucesor);
+                        // Comprobar si para una posicion y una accion no se ha explorado antes ese nodo
+                        if (listaExplorados.add(nodoSucesor)) {
+                            // System.out.println("\taccion: " + listaAcciones[i]);
+                            listaAbiertos.add(nodoSucesor);
                         }
                     }
                 }
