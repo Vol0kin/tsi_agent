@@ -26,6 +26,8 @@ public class TestAgent extends BaseAgent{
     private boolean primerTurno = true;
     PathInformation informacionPlan;
     
+    int it = 0;
+    
     private PathFinder pf;
     
     public TestAgent(StateObservation so, ElapsedCpuTimer elapsedTimer){
@@ -198,7 +200,6 @@ public class TestAgent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
 
-
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -213,7 +214,8 @@ public class TestAgent extends BaseAgent{
             System.out.println(accion);
         }
 
-/*
+        /*
+
         if (plan.size() == 0){
             // Veo si tengo el número suficiente de gemas
             
@@ -287,9 +289,25 @@ public class TestAgent extends BaseAgent{
                 System.out.print('\n');
             }
         }*/
-        
-        return plan.pollFirst();
-        
+            
+        // A partir de la iteración 2, empezando en la 0, tarda menos
+/*
+        if (it >= 2){
+            long t11 = elapsedTimer.elapsedMillis();
+
+            StateObservation estado;
+
+            for (int i = 0; i < 90; i++){
+                stateObs.advance(Types.ACTIONS.ACTION_UP);
+                estado = stateObs.copy();
+            }
+
+            long t12 = elapsedTimer.elapsedMillis();
+            long t_total = t12 - t11;
+
+            System.out.println("T total: " + t_total);
+        }*/
+
         /*System.out.println("Prueba de distancias usando getHeuristicDistance: ");
         System.out.println(this.getHeuristicDistance(5, 5, 5, 5));
         System.out.println(this.getHeuristicDistance(0, 0, 5, 0)); //No, porque hay muro
@@ -298,7 +316,9 @@ public class TestAgent extends BaseAgent{
         System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
         System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
         
-        //return Types.ACTIONS.ACTION_DOWN;
+        it++;
+        
+        return Types.ACTIONS.ACTION_NIL;
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -514,7 +534,7 @@ public class TestAgent extends BaseAgent{
         
         // Guardar distancia recorrida  y acciones en la informacion del plan
         if (objetivoEncontrado) {
-            System.out.println("Encontrado objetivo");
+            //System.out.println("Encontrado objetivo");
             //nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
         
             while (recorrido.padre != null) {
@@ -771,7 +791,7 @@ public class TestAgent extends BaseAgent{
 
         // Guardar distancia recorrida  y acciones en la informacion del plan
         if (encontradoObjetivo) {
-            System.out.println("Encontrado objetivo");
+            //System.out.println("Encontrado objetivo");
             //nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
 
             while (recorrido.getPadre() != null) {
