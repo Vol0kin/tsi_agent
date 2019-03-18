@@ -202,7 +202,11 @@ public class TestAgent extends BaseAgent{
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-        informacionPlan = stateExplorer(5, 3, stateObs);
+        if (primerTurno) {
+            informacionPlan = pathFinder2(7, 9, stateObs);
+            primerTurno = false;
+        }
+
         plan = informacionPlan.plan;
 
         for (Types.ACTIONS accion: informacionPlan.plan) {
@@ -318,7 +322,7 @@ public class TestAgent extends BaseAgent{
         
         // Como sé que si me tengo que mover tanto en X como en Y voy a tener que dar un
         // giro como mínimo, en ese caso añado uno a la distancia
-        
+
         if (xStart != xGoal && yStart != yGoal)
             distance++;
         
@@ -528,6 +532,110 @@ public class TestAgent extends BaseAgent{
         }  
         
         return nuevoPlan;
+    }
+
+    private ArrayList<Observation> getNeighbours(Observation currentObs, ArrayList<Observation>[][] grid) {
+        ArrayList<Observation> neighbours = new ArrayList<>();
+        int x = currentObs.getX(), y = currentObs.getY();
+
+        neighbours.add(grid[x][y - 1].get(0));      // Top neighbour
+        neighbours.add(grid[x + 1][y].get(0));      // Right neighbour
+        neighbours.add(grid[x][y + 1].get(0));      // Bottom neighbour
+        neighbours.add(grid[x - 1][y].get(0));      // Left neighbour
+
+        return  neighbours;
+    }
+
+    private PathInformation pathFinder2(int xGoal, int yGoal, StateObservation stateObs) {
+        PathInformation plan = new PathInformation();
+        PriorityQueue<GridNode> openList = new PriorityQueue<>(
+                (GridNode n1, GridNode n2) -> n1.getfCost() - n2.getfCost());
+        LinkedList<GridNode> closedList = new LinkedList<>();
+        HashSet<GridNode> exploredList = new HashSet<>();
+
+        final ObservationType BOULDER = ObservationType.BOULDER,
+                              WALL = ObservationType.WALL;
+
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+        PlayerObservation playerPos = this.getPlayer(stateObs);
+        boolean foundGoal = false;
+
+        GridNode currentNode;
+        Observation currentObservation;
+
+        final Types.ACTIONS[] actions = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT, Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT};
+        final Orientation[] orientations = {Orientation.N, Orientation.E, Orientation.S, Orientation.W};
+        final Observation goal = grid[xGoal][yGoal].get(0);
+
+        openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
+                                  null, playerPos, playerPos.getOrientation(), null));
+
+        while (!foundGoal && !openList.isEmpty()) {
+            currentNode = openList.poll();
+            currentObservation = currentNode.getPosition();
+            Observation position = currentNode.getPosition();
+            System.out.println("Nodo actual: " + currentNode);
+
+            if (position.getX() == xGoal && position.getY() == yGoal) {
+                foundGoal = true;
+            } else {
+                ArrayList <Observation> neighbours = this.getNeighbours(currentObservation, grid);
+
+                for (int i = 0; i < neighbours.size(); i++) {
+                    Observation nextGrid = neighbours.get(i);
+                    int x = nextGrid.getX(), y = nextGrid.getY();
+
+                    if (!nextGrid.getType().equals(BOULDER) && !nextGrid.getType().equals(WALL)
+                            && !grid[x][y - 1].get(0).equals(BOULDER)) {
+                        int numberActions = 1;
+                        LinkedList<Types.ACTIONS> actionList = new LinkedList<>();
+                        actionList.addFirst(actions[i]);
+
+                        if (!currentNode.getOrientation().equals(orientations[i])) {
+                            numberActions++;
+                            actionList.addFirst(actions[i]);
+                        }
+
+
+                        GridNode node = new GridNode(currentNode.getgCost() + numberActions,
+                                this.getHeuristicDistance(nextGrid, goal),
+                                actionList, nextGrid, orientations[i], currentNode);
+
+                        if (exploredList.add(node)) {
+                            System.out.println("Nodo expandido: " + node);
+                            openList.add(node);
+                        }
+                    }
+                }
+            }
+
+            closedList.addFirst(currentNode);
+        }
+
+        GridNode path = closedList.getFirst();
+
+        // Guardar distancia recorrida  y acciones en la informacion del plan
+        if (foundGoal) {
+            //System.out.println("Encontrado objetivo");
+            //nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
+
+            while (path.getParent() != null) {
+                // Aniadir casillas recorridas
+                //plan.listaCasillas.add(0, recorrido.getJugador());
+
+                // Aniadir secuencia de acciones realizadas
+                plan.plan.addAll(0, path.getActionList());
+                path = path.getParent();
+            }
+
+            // Aniadir casilla inicial
+            //plan.listaCasillas.add(0, recorrido.getJugador());
+            //plan.distancia = plan.listaCasillas.size();
+        } else {
+            System.out.println("no encontrado");
+        }
+
+        return plan;
     }
 
     private PathInformation stateExplorer(int xGoal, int yGoal, StateObservation stateObs) {
