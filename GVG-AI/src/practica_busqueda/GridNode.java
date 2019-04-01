@@ -12,9 +12,11 @@ class GridNode {
     private Observation position;
     private Orientation orientation;
     private GridNode parent;
+    private int boulderIndex;
 
     GridNode(int gCost, int hCost, LinkedList<Types.ACTIONS> actionList,
-             Observation position, Orientation orientation, GridNode parent) {
+             Observation position, Orientation orientation, int boulderIndex,
+             GridNode parent) {
         this.gCost = gCost;
         this.hCost = hCost;
         this.fCost = gCost + fCost;
@@ -23,6 +25,7 @@ class GridNode {
         this.position = position;
         this.orientation = orientation;
         this.parent = parent;
+        this.boulderIndex = boulderIndex;
 
     }
 
@@ -50,6 +53,8 @@ class GridNode {
         return this.position;
     }
 
+    int getBoulderIndex() { return this.boulderIndex; }
+
     @Override
     public int hashCode() {
         String stringCode = "";
@@ -58,6 +63,8 @@ class GridNode {
         // Add the (X, Y) position
         stringCode += this.position.getX();
         stringCode += this.position.getY();
+
+        stringCode += this.boulderIndex;
 
         hashCode = Integer.parseInt(stringCode);
 
@@ -77,7 +84,8 @@ class GridNode {
         }
 
         if (this.position.getX() == gNode.position.getX()
-            && this.position.getY() == gNode.position.getY()) {
+            && this.position.getY() == gNode.position.getY()
+            && this.boulderIndex == gNode.boulderIndex) {
             return true;
         } else {
             return false;
