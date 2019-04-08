@@ -13,19 +13,24 @@ class GridNode {
     private Orientation orientation;
     private GridNode parent;
     private int boulderIndex;
+    private boolean[][] groundMap;
+    private boolean[][] gemsMap;
 
     GridNode(int gCost, int hCost, LinkedList<Types.ACTIONS> actionList,
              Observation position, Orientation orientation, int boulderIndex,
-             GridNode parent) {
+             boolean[][] groundMap, boolean[][] gemsMap, GridNode parent) {
         this.gCost = gCost;
         this.hCost = hCost;
-        this.fCost = gCost + fCost;
+        this.fCost = this.gCost + this.hCost;
 
         this.actionList = actionList;
         this.position = position;
         this.orientation = orientation;
         this.parent = parent;
         this.boulderIndex = boulderIndex;
+
+        this.groundMap = groundMap;
+        this.gemsMap = gemsMap;
 
     }
 
@@ -54,6 +59,10 @@ class GridNode {
     }
 
     int getBoulderIndex() { return this.boulderIndex; }
+
+    boolean[][] getGroundMap() { return this.groundMap;  }
+
+    boolean[][] getGemsMap() { return this.gemsMap;  }
 
     @Override
     public int hashCode() {
@@ -94,6 +103,6 @@ class GridNode {
 
     @Override
     public String toString() {
-        return "Pos: " + position + " Coste g: " + this.gCost + " Costr h: " + this.hCost;
+        return "Pos: " + position + " Coste g: " + this.gCost + " Coste h: " + this.hCost +  " Coste f:" + this.fCost + " Index: " + this.boulderIndex;
     }
 }
