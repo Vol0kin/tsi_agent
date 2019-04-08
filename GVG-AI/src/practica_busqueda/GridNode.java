@@ -15,10 +15,12 @@ class GridNode {
     private int boulderIndex;
     private boolean[][] groundMap;
     private boolean[][] gemsMap;
+    private boolean forbidAboveGrid;
 
     GridNode(int gCost, int hCost, LinkedList<Types.ACTIONS> actionList,
              Observation position, Orientation orientation, int boulderIndex,
-             boolean[][] groundMap, boolean[][] gemsMap, GridNode parent) {
+             boolean[][] groundMap, boolean[][] gemsMap, boolean forbidAboveGrid,
+             GridNode parent) {
         this.gCost = gCost;
         this.hCost = hCost;
         this.fCost = this.gCost + this.hCost;
@@ -31,7 +33,7 @@ class GridNode {
 
         this.groundMap = groundMap;
         this.gemsMap = gemsMap;
-
+        this.forbidAboveGrid = forbidAboveGrid;
     }
 
     int getfCost() {
@@ -63,6 +65,8 @@ class GridNode {
     boolean[][] getGroundMap() { return this.groundMap;  }
 
     boolean[][] getGemsMap() { return this.gemsMap;  }
+
+    boolean getForbiAboveGrid() { return this.forbidAboveGrid; }
 
     @Override
     public int hashCode() {

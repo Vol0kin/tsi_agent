@@ -30,6 +30,7 @@ public class Agent extends BaseAgent{
     int it = 0;
     
     private PathFinder pf;
+    private boolean stop;
     
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
@@ -55,6 +56,7 @@ public class Agent extends BaseAgent{
         pf.VERBOSE = false;
         
         pf.run(so);
+        stop = false;
         
         
         //PlayerObservation jugador = this.getPlayer(so);
@@ -74,7 +76,7 @@ public class Agent extends BaseAgent{
     }
     
     @Override
-    public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer){
+    public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         //System.out.println(elapsedTimer.remainingTimeMillis());
         /*
         if (iter == 0){
@@ -192,12 +194,12 @@ public class Agent extends BaseAgent{
             
         iter++;
         }*/
-        
+
         // Voy de una gema a otra hasta tener 9
-          
+
         // VER LO QUE PASA SI AL COGER UNA GEMA HAGO QUE PIERDA PORQUE ME QUEDE
         // ENCERRADO O HAGO QUE UNA GEMA QUEDE ENCERRADA!!
-        
+
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
 
@@ -205,15 +207,11 @@ public class Agent extends BaseAgent{
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
         if (primerTurno) {
-            informacionPlan = pathExplorer(6, 1, stateObs);
+            informacionPlan = pathExplorer(21, 1, stateObs);
             primerTurno = false;
         }
 
         plan = informacionPlan.plan;
-/*
-        for (Types.ACTIONS accion: informacionPlan.plan) {
-            System.out.println(accion);
-        }*/
 
         /*
 
@@ -290,7 +288,7 @@ public class Agent extends BaseAgent{
                 System.out.print('\n');
             }
         }*/
-            
+
         // A partir de la iteración 2, empezando en la 0, tarda menos
 /*
         if (it >= 2){
@@ -316,40 +314,42 @@ public class Agent extends BaseAgent{
         System.out.println(this.getHeuristicDistance(10, 4, 10, 10));
         System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
         System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
-        
+
         // Veo si funciona bien el método getHeuristicGems -> FUNCIONA
-        if(it == 0){
+        /*
+        if (it == 0) {
             ArrayList<Cluster> clusters = createClusters(3, stateObs);
             Observation jugador = super.getPlayer(stateObs);
             int dist;
 
-            for (int i = 0; i < clusters.size(); i++){
+            for (int i = 0; i < clusters.size(); i++) {
                 dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
                         jugador.getY(), clusters.get(i).getGems());
-                
+
                 for (int j = 0; j < clusters.get(i).getGems().size(); j++)
                     System.out.println(clusters.get(i).getGem(j));
 
                 System.out.println("Cluster " + i + ": " + dist);
             }
-            
+
             ArrayList<Observation> gemas = clusters.get(3).getGems();
-        
+
             // Veo cuánto tarda el método getHeuristicGems
             double t1 = System.currentTimeMillis();
 
             for (int i = 0; i < 5000; i++)
                 dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
                         jugador.getY(), gemas);
-            
+
             double t2 = System.currentTimeMillis();
-            
-            System.out.println("Tiempo medio en ejecutar getHeuristicGems: " + ((t2 - t1)/5000.0) + " ms");
-        }
-        
+
+            System.out.println("Tiempo medio en ejecutar getHeuristicGems: " + ((t2 - t1) / 5000.0) + " ms");
+        }*/
+
         it++;
-        
+
         return plan.pollFirst();
+
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -742,7 +742,7 @@ public class Agent extends BaseAgent{
         // Add first node
         openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
                 null, playerPos, playerPos.getOrientation(), 0,
-                groundMap, gemsMap, null));
+                groundMap, gemsMap, false,null));
 
         while (!foundGoal && !openList.isEmpty()) {
             // Get first node
@@ -765,12 +765,18 @@ public class Agent extends BaseAgent{
                     Observation nextGrid = neighbours.get(i);
                     int x = nextGrid.getX(), y = nextGrid.getY();
 
+                    // Skip forbidden grid if it's the north grid
+                    if (i == 0 && currentNode.getForbiAboveGrid()) {
+                        continue;
+                    }
+
                     // Check if the grid is not a boulder in the current boulder map
                     if (!currentBoulders[x][y]) {
                         int numberActions = 1;
                         int bouldIndx = currentNode.getBoulderIndex();
                         Observation nextPosition = nextGrid;
                         boolean[][] nextGround = new boolean[XMAX][YMAX];
+                        boolean forbidAboveGrid = false;
 
                         // Copy the current ground and set the current grid as not ground
                         UtilAlgorithms.copy2DArray(currentGround, nextGround, XMAX, YMAX);
@@ -828,12 +834,21 @@ public class Agent extends BaseAgent{
 
                             // Set the next position as the same as now
                             nextPosition = currentNode.getPosition();
+
+                            // Forbid the above grid if the current grid is the above grid
+                            // and the agent has mined or if the agent has mined another grid
+                            // and hasn't changed its position and the previous grid had forbidden
+                            // that movement
+                            if ((i == 0) || (nextPosition.equals(currentNode.getPosition()) && currentNode.getForbiAboveGrid())) {
+                                forbidAboveGrid = true;
+                            }
                         }
 
                         // Create new grid node
                         GridNode node = new GridNode(currentNode.getgCost() + numberActions,
                                 this.getHeuristicDistance(nextPosition, goal),
-                                actionList, nextPosition, orientations[i], bouldIndx, nextGround, currentNode.getGemsMap(),  currentNode);
+                                actionList, nextPosition, orientations[i], bouldIndx,
+                                nextGround, currentNode.getGemsMap(), forbidAboveGrid, currentNode);
 
                         // Add the node to the explored list
                         if (exploredList.add(node)) {
@@ -871,17 +886,11 @@ public class Agent extends BaseAgent{
      */
     private PathInformation parsePlan(GridNode gridPath) {
         PathInformation plan = new PathInformation();
-        HashSet<Observation> gridSet = new HashSet<>();
-
 
         while (gridPath.getParent() != null) {
             plan.plan.addAll(0, gridPath.getActionList());
-
-            if (!gridSet.contains(gridPath.getPosition())) {
-                plan.listaCasillas.add(0, gridPath.getPosition());
-                gridSet.add(gridPath.getPosition());
-                plan.distancia++;
-            }
+            plan.listaCasillas.add(0, gridPath.getPosition());
+            plan.distancia++;
 
             gridPath = gridPath.getParent();
         }
