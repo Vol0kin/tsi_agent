@@ -317,6 +317,36 @@ public class Agent extends BaseAgent{
         System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
         System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
         
+        // Veo si funciona bien el método getHeuristicGems -> FUNCIONA
+        if(it == 0){
+            ArrayList<Cluster> clusters = createClusters(3, stateObs);
+            Observation jugador = super.getPlayer(stateObs);
+            int dist;
+
+            for (int i = 0; i < clusters.size(); i++){
+                dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
+                        jugador.getY(), clusters.get(i).getGems());
+                
+                for (int j = 0; j < clusters.get(i).getGems().size(); j++)
+                    System.out.println(clusters.get(i).getGem(j));
+
+                System.out.println("Cluster " + i + ": " + dist);
+            }
+            
+            ArrayList<Observation> gemas = clusters.get(3).getGems();
+        
+            // Veo cuánto tarda el método getHeuristicGems
+            double t1 = System.currentTimeMillis();
+
+            for (int i = 0; i < 5000; i++)
+                dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
+                        jugador.getY(), gemas);
+            
+            double t2 = System.currentTimeMillis();
+            
+            System.out.println("Tiempo medio en ejecutar getHeuristicGems: " + ((t2 - t1)/5000.0) + " ms");
+        }
+        
         it++;
         
         return plan.pollFirst();
@@ -1279,5 +1309,83 @@ public class Agent extends BaseAgent{
         }
 
         return newState;
+    }
+    
+    // Heurística para el A* que tiene que coger varias gemas
+    // Devuelve la heurística asociada a ir desde la casilla xStart, yStart
+    // coger todas las gemas de "gems" y acabar en la casilla xGoal, yGoal
+    // Cota usada: la distancia es la suma de la distancia de ir de start a
+    // la gema más cercana, los "n-1" lados más cortos del grafo formado por las gemas
+    // y la distancia de ir desde goal a la gema más cercana
+    private int getHeuristicGems(int xStart, int yStart, int xGoal, int yGoal, ArrayList<Observation> gems){
+        int total_dist = 0;
+        
+        // Primero calculo la distancia optimista (cota inferior) para coger todas las gemas de la lista
+        // Calculo una matriz de distancias entre las gemas (usando getHeuristicDistance)
+        int num_gems = gems.size();
+        int[][] dist_matrix = new int[num_gems][num_gems]; // Matriz triangular inferior
+        
+        Observation gem_i;
+        int x_gem_i, y_gem_i;
+        for (int i = 1; i < num_gems; i++){
+            gem_i = gems.get(i);
+            x_gem_i = gem_i.getX();
+            y_gem_i = gem_i.getY();
+            
+            for (int j = 0; j < i; j++){
+                dist_matrix[i][j] = getHeuristicDistance(x_gem_i, y_gem_i, gems.get(j).getX(), gems.get(j).getY());
+            }
+        }
+        
+        // Ahora calculo las "num_gems-1" distancias más pequeñas entre las gemas
+        int[] smallest_dist = new int[num_gems-1];
+        
+        for (int i = 0; i < num_gems-1; i++)
+            smallest_dist[i] = 1000;
+        
+        int dist_actual;
+        for (int i = 1; i < num_gems; i++){         
+            for (int j = 0; j < i; j++){
+                dist_actual = dist_matrix[i][j];
+                
+                // Calculo el máximo del vector smallest_dist
+                int max_dist = -1;
+                int ind_max = -1;
+                for (int k = 0; k < num_gems-1; k++){
+                    if (smallest_dist[k] > max_dist){
+                        max_dist = smallest_dist[k];
+                        ind_max = k;
+                    }
+                }
+                
+                // Si dist_actual es menor que ese valor, lo sustituyo
+                if (dist_actual < max_dist)
+                    smallest_dist[ind_max] = dist_actual;     
+            }
+        }
+        
+        // Le sumo a la distancia total las distancias de smallest_dist
+        for (int i = 0; i < num_gems-1; i++)
+            total_dist += smallest_dist[i];
+        
+        // Calculo las gemas más cercanas al punto de inicio y de fin
+        int min_dist_orig = 1000, min_dist_goal = 1000;
+        int dist_orig, dist_goal;
+        
+        for (Observation gem: gems){
+            dist_orig = getHeuristicDistance(gem.getX(), gem.getY(), xStart, yStart);
+            dist_goal = getHeuristicDistance(gem.getX(), gem.getY(), xGoal, yGoal);
+            
+            if (dist_orig < min_dist_orig)
+                min_dist_orig = dist_orig;
+            
+            if (dist_goal < min_dist_goal)
+                min_dist_goal = dist_goal;
+        }
+        
+        // Sumo esas distancias a la distancia total
+        total_dist += min_dist_orig + min_dist_goal;
+        
+        return total_dist;
     }
 }

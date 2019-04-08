@@ -22,6 +22,10 @@ public class Cluster {
         return gems.size();
     }
     
+    public ArrayList<Observation> getGems(){
+        return gems;
+    }
+    
     public int getPathLenght(){
         return pathLength;
     }
