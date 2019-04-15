@@ -206,9 +206,29 @@ public class Agent extends BaseAgent{
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-        if (primerTurno) {
-            informacionPlan = pathExplorer(21, 1, stateObs);
-            primerTurno = false;
+
+        if (it == 0) {
+            informacionPlan = pathExplorer(9, 4, stateObs);
+        }
+
+        if (it > 0 && informacionPlan.plan.isEmpty()) {
+            ArrayList<Observation> goalGems = new ArrayList<>();
+            ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+            goalGems.add(grid[5][3].get(0));
+            goalGems.add(grid[6][3].get(0));
+            goalGems.add(grid[7][3].get(0));
+            goalGems.add(grid[6][1].get(0));
+            goalGems.add(grid[7][1].get(0));
+            //goalGems.add(grid[1][4].get(0));
+            informacionPlan = pathExplorer(10, 1, stateObs, goalGems);
+
+            for (Types.ACTIONS action: informacionPlan.plan) {
+                System.out.println(action);
+            }
+/*
+            for (Observation obs: informacionPlan.listaCasillas) {
+                System.out.println(obs);
+            }*/
         }
 
         plan = informacionPlan.plan;
@@ -594,7 +614,7 @@ public class Agent extends BaseAgent{
         neighbours.add(grid[x][y + 1].get(0));      // Bottom neighbour
         neighbours.add(grid[x - 1][y].get(0));      // Left neighbour
 
-        return  neighbours;
+        return neighbours;
     }
 /*
     private PathInformation pathFinder2(int xGoal, int yGoal, StateObservation stateObs) {
@@ -742,7 +762,7 @@ public class Agent extends BaseAgent{
         // Add first node
         openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
                 null, playerPos, playerPos.getOrientation(), 0,
-                groundMap, gemsMap, false,null));
+                groundMap, gemsMap, false, 0, null, null));
 
         while (!foundGoal && !openList.isEmpty()) {
             // Get first node
@@ -807,8 +827,8 @@ public class Agent extends BaseAgent{
                             int emptyPos = y + 1;
 
                             /* Find out number of boulders above the current grid
-                               and the index of the highest grid containing a boulder
-                             */
+                               and the index of the highest grid containing a boulder*/
+
                             while (newBoulders[x][boulderPos] && !grid[x][boulderPos].get(0).getType().equals(WALL)) {
                                 numberBoulders++;
                                 boulderPos--;
@@ -848,7 +868,7 @@ public class Agent extends BaseAgent{
                         GridNode node = new GridNode(currentNode.getgCost() + numberActions,
                                 this.getHeuristicDistance(nextPosition, goal),
                                 actionList, nextPosition, orientations[i], bouldIndx,
-                                nextGround, currentNode.getGemsMap(), forbidAboveGrid, currentNode);
+                                nextGround, currentNode.getGemsMap(), forbidAboveGrid, 0, null, currentNode);
 
                         // Add the node to the explored list
                         if (exploredList.add(node)) {
@@ -867,6 +887,219 @@ public class Agent extends BaseAgent{
 
         // Save the path information
         if (foundGoal) {
+            plan = parsePlan(path);
+        } else {
+            System.out.println("no encontrado");
+        }
+
+        return plan;
+    }
+
+    private PathInformation pathExplorer(int xGoal, int yGoal, StateObservation stateObs, ArrayList<Observation> goalGems) {
+        PathInformation plan = new PathInformation();
+        PriorityQueue<GridNode> openList = new PriorityQueue<>(
+                (GridNode n1, GridNode n2) -> n1.getfCost() - n2.getfCost());
+        LinkedList<GridNode> closedList = new LinkedList<>();
+        HashSet<GridNode> exploredList = new HashSet<>();
+
+        final ObservationType WALL = ObservationType.WALL;
+
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+        PlayerObservation playerPos = this.getPlayer(stateObs);
+        boolean foundGoal = false;
+
+        GridNode currentNode;
+        Observation currentObservation;
+
+        final Types.ACTIONS[] actions = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT, Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT};
+        final Orientation[] orientations = {Orientation.N, Orientation.E, Orientation.S, Orientation.W};
+        final Observation goal = grid[xGoal][yGoal].get(0);
+
+
+        final int XMAX = grid.length,
+                YMAX = grid[0].length;
+
+
+        // Boulder map (contains boulders and walls)
+        boolean[][] boulderMap = new boolean[XMAX][YMAX];
+        ArrayList<Observation> boulders = this.getBouldersList(stateObs);
+        ArrayList<Observation> walls = this.getWallsList(stateObs);
+
+        boulders.addAll(walls);
+
+        UtilAlgorithms.initMap(boulderMap, boulders, XMAX, YMAX);
+
+        // Create ArrayList containing boulder configurations
+        ArrayList<boolean [][]> boulderConfigurations = new ArrayList<>();
+        boulderConfigurations.add(boulderMap);
+
+        // Ground map
+        boolean[][] groundMap = new boolean[XMAX][YMAX];
+        ArrayList<Observation> groundList = this.getGroundTilesList(stateObs);
+
+        UtilAlgorithms.initMap(groundMap, groundList, XMAX, YMAX);
+
+        // Gems map
+        boolean[][] gemsMap = new boolean[XMAX][YMAX];
+        ArrayList<Observation> gemsList = this.getGemsList(stateObs);
+
+        UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
+
+        // Add first node
+        openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
+                null, playerPos, playerPos.getOrientation(), 0,
+                groundMap, gemsMap, false, goalGems.size(), goalGems, null));
+
+        while (!foundGoal && !openList.isEmpty()) {
+            // Get first node
+            currentNode = openList.poll();
+
+            // Get current observation, boulder map and ground map
+            currentObservation = currentNode.getPosition();
+            boolean[][] currentBoulders = boulderConfigurations.get(currentNode.getBoulderIndex());
+            boolean[][] currentGround = currentNode.getGroundMap();
+            boolean[][] currentGems = currentNode.getGemsMap();
+
+            int remainingGems = currentNode.getRemainingGems();
+            ArrayList<Observation> currentGemsList = currentNode.getGemsList();
+
+            if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems == 0) {
+                foundGoal = true;
+            } else if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems != 0) {
+                closedList.addFirst(currentNode);
+                continue;
+            } else {
+                // Get list of neighbours
+                ArrayList<Observation> neighbours = this.getNeighbours(currentObservation, grid);
+
+                // Iterate over each neighbour
+                for (int i = 0; i < neighbours.size(); i++) {
+                    // Set next grid to explore and get its position
+                    Observation nextGrid = neighbours.get(i);
+                    int x = nextGrid.getX(), y = nextGrid.getY();
+
+                    // Skip forbidden grid if it's the north grid
+                    if (i == 0 && currentNode.getForbiAboveGrid()) {
+                        continue;
+                    }
+
+                    // Check if the grid is not a boulder in the current boulder map
+                    if (!currentBoulders[x][y]) {
+                        int numberActions = 1;
+                        int bouldIndx = currentNode.getBoulderIndex();
+                        Observation nextPosition = nextGrid;
+                        boolean[][] nextGround = new boolean[XMAX][YMAX];
+                        boolean forbidAboveGrid = false;
+                        int nextRemainingGems = remainingGems;
+                        ArrayList<Observation> nextGemsList = (ArrayList<Observation>) currentGemsList.clone();
+                        boolean[][] nextGemsMap = new boolean[XMAX][YMAX];
+
+                        // Copy the current ground and set the current grid as not ground
+                        UtilAlgorithms.copy2DArray(currentGround, nextGround, XMAX, YMAX);
+                        UtilAlgorithms.copy2DArray(currentGems, nextGemsMap, XMAX, YMAX);
+
+                        nextGround[x][y] = false;
+
+                        // Add actions
+                        LinkedList<Types.ACTIONS> actionList = new LinkedList<>();
+                        actionList.addFirst(actions[i]);
+
+                        // Check wether an extra action must be done (a turn)
+                        if (!currentNode.getOrientation().equals(orientations[i])) {
+                            numberActions++;
+                            actionList.addFirst(actions[i]);
+                        }
+
+                        if (currentGems[x][y] && nextGemsList.contains(nextGrid)) {
+                                nextGemsList.remove(nextGemsList.indexOf(nextGrid));
+                                nextGemsMap[x][y] = false;
+                                nextRemainingGems--;
+
+                        }
+
+                        // Check wether there's a boulder above the current grid and it's nor a gem
+                        // nor a wall
+                        if (currentBoulders[x][y - 1] && !grid[x][y-1].get(0).getType().equals(WALL)) {
+
+                            // Crete new boulder map and copy its old values
+                            boolean[][] newBoulders = new boolean[XMAX][YMAX];
+                            UtilAlgorithms.copy2DArray(currentBoulders, newBoulders, XMAX, YMAX);
+
+                            int numberBoulders = 0;
+                            int boulderPos = y - 1;
+                            int emptyPos = y + 1;
+
+                            /* Find out number of boulders above the current grid
+                               and the index of the highest grid containing a boulder
+                             */
+                            while (newBoulders[x][boulderPos] && !grid[x][boulderPos].get(0).getType().equals(WALL)) {
+                                numberBoulders++;
+                                boulderPos--;
+                            }
+
+                            // Find out the index of the last empty space
+                            while (!nextGround[x][emptyPos] && !grid[x][emptyPos].get(0).getType().equals(WALL)) {
+                                emptyPos++;
+                            }
+
+                            // Modify the boulder map, moving the boulders
+                            for (int j = emptyPos - 1; j > boulderPos; j--) {
+                                if (j > emptyPos - 1 - numberBoulders) {
+                                    newBoulders[x][j] = true;
+                                } else {
+                                    newBoulders[x][j] = false;
+                                }
+                            }
+
+                            // Add the new boulder configuration and update boulder map index
+                            boulderConfigurations.add(newBoulders);
+                            bouldIndx = boulderConfigurations.indexOf(newBoulders);
+
+                            // Set the next position as the same as now
+                            nextPosition = currentNode.getPosition();
+
+                            // Forbid the above grid if the current grid is the above grid
+                            // and the agent has mined or if the agent has mined another grid
+                            // and hasn't changed its position and the previous grid had forbidden
+                            // that movement
+                            if ((i == 0) || (nextPosition.equals(currentNode.getPosition()) && currentNode.getForbiAboveGrid())) {
+                                forbidAboveGrid = true;
+                            }
+
+                        }
+
+                        int heuristic;
+
+                        if (nextRemainingGems > 0) {
+                            heuristic = this.getHeuristicGems(nextPosition, goal, nextGemsList);
+                        } else {
+                            heuristic = this.getHeuristicDistance(nextPosition, goal);
+                        }
+
+                        // Create new grid node
+                        GridNode node = new GridNode(currentNode.getgCost() + numberActions,
+                                heuristic,
+                                actionList, nextPosition, orientations[i], bouldIndx,
+                                nextGround, nextGemsMap, forbidAboveGrid, nextRemainingGems, nextGemsList, currentNode);
+
+                        // Add the node to the explored list
+                        if (exploredList.add(node)) {
+                            openList.add(node);
+                        }
+                    }
+                }
+            }
+
+            // Add the current node to the closed list
+            closedList.addFirst(currentNode);
+        }
+
+
+
+        // Save the path information
+        if (foundGoal) {
+            // Get the last explored grid (goal grid)
+            GridNode path = closedList.getFirst();
             plan = parsePlan(path);
         } else {
             System.out.println("no encontrado");
@@ -895,7 +1128,7 @@ public class Agent extends BaseAgent{
             gridPath = gridPath.getParent();
         }
 
-        plan.listaCasillas.add(gridPath.getPosition());
+        plan.listaCasillas.add(0, gridPath.getPosition());
         plan.distancia++;
 
         return plan;
@@ -1318,6 +1551,10 @@ public class Agent extends BaseAgent{
         }
 
         return newState;
+    }
+
+    private int getHeuristicGems(Observation start, Observation goal, ArrayList<Observation> gems) {
+        return getHeuristicGems(start.getX(), start.getY(), goal.getX(), goal.getY(), gems);
     }
     
     // Heurística para el A* que tiene que coger varias gemas

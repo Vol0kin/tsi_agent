@@ -16,11 +16,13 @@ class GridNode {
     private boolean[][] groundMap;
     private boolean[][] gemsMap;
     private boolean forbidAboveGrid;
+    private int remainingGems;
+    private ArrayList<Observation> gemsList;
 
     GridNode(int gCost, int hCost, LinkedList<Types.ACTIONS> actionList,
              Observation position, Orientation orientation, int boulderIndex,
              boolean[][] groundMap, boolean[][] gemsMap, boolean forbidAboveGrid,
-             GridNode parent) {
+             int remainingGems, ArrayList<Observation> gemsList, GridNode parent) {
         this.gCost = gCost;
         this.hCost = hCost;
         this.fCost = this.gCost + this.hCost;
@@ -34,6 +36,9 @@ class GridNode {
         this.groundMap = groundMap;
         this.gemsMap = gemsMap;
         this.forbidAboveGrid = forbidAboveGrid;
+        this.remainingGems = remainingGems;
+
+        this.gemsList = gemsList;
     }
 
     int getfCost() {
@@ -68,10 +73,17 @@ class GridNode {
 
     boolean getForbiAboveGrid() { return this.forbidAboveGrid; }
 
+    int getRemainingGems() { return this.remainingGems; }
+
+    ArrayList<Observation> getGemsList() { return this.gemsList; }
+
     @Override
     public int hashCode() {
         String stringCode = "";
         int hashCode;
+        long hashLong;
+
+        stringCode += this.remainingGems;
 
         // Add the (X, Y) position
         stringCode += this.position.getX();
@@ -79,7 +91,9 @@ class GridNode {
 
         stringCode += this.boulderIndex;
 
-        hashCode = Integer.parseInt(stringCode);
+        hashLong = Long.parseLong(stringCode);
+        hashLong = hashLong % Integer.MAX_VALUE;
+        hashCode = (int) hashLong;
 
         return hashCode;
     }
@@ -98,7 +112,8 @@ class GridNode {
 
         if (this.position.getX() == gNode.position.getX()
             && this.position.getY() == gNode.position.getY()
-            && this.boulderIndex == gNode.boulderIndex) {
+            && this.boulderIndex == gNode.boulderIndex
+            && this.remainingGems == gNode.remainingGems) {
             return true;
         } else {
             return false;

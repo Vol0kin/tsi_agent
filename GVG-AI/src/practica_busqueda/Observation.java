@@ -87,4 +87,27 @@ public class Observation {
     public String toString(){
         return ("Tipo: " + type + " x: " + x + " y: " + y);
     }
+
+    @Override
+    public boolean equals(Object otherObs) {
+        if (otherObs == null) {
+            return false;
+        }
+
+        if (!(otherObs instanceof Observation)) {
+            return false;
+        }
+
+        if (otherObs == this) {
+            return true;
+        }
+
+        Observation obs = (Observation) otherObs;
+
+        if (this.x == obs.x && this.y == obs.y && this.type.equals(obs.type)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
