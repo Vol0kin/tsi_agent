@@ -110,4 +110,12 @@ public class Observation {
             return false;
         }
     }
+    
+    // El hashCode solo tiene en cuenta la posición x e y, pero no el tipo de
+    // observación. Por tanto, se debe usar solo para comparar observaciones
+    // del mismo tipo
+    @Override
+    public int hashCode(){
+        return 40*x + y;
+    }
 }
