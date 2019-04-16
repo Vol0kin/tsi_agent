@@ -341,13 +341,13 @@ public class Agent extends BaseAgent{
         System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
 
         // Veo si funciona bien el método getHeuristicGems
-        
+        /*
         if (it == 0) {
             ArrayList<Cluster> clusters = createClusters(3, stateObs);
             Observation jugador = super.getPlayer(stateObs);
             int dist;
 
-            /*for (int i = 0; i < clusters.size(); i++) {
+            for (int i = 0; i < clusters.size(); i++) {
                 dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
                         jugador.getY(), clusters.get(i).getGems());
 
@@ -355,7 +355,7 @@ public class Agent extends BaseAgent{
                     System.out.println(clusters.get(i).getGem(j));
 
                 System.out.println("Cluster " + i + ": " + dist);
-            }*/
+            }
 
             ArrayList<Observation> gemas = clusters.get(3).getGems();
             
@@ -370,14 +370,62 @@ public class Agent extends BaseAgent{
             double t2 = System.currentTimeMillis();
 
             System.out.println("Tiempo medio en ejecutar getHeuristicGems: " + ((t2 - t1) / 50000.0) + " ms");
-        }
+        }*/
+        
+        // Pruebo ClusterInformation y el resto -> FUNCIONA BIEN
+        // VER LO QUE TARDA TODO (AÑADIR CALCULO DIFICULTAD CLUSTER Y VIAJANTE COMERCIO)
+        
+        if (it == 0){
+            double t1 = System.currentTimeMillis();
+            
+            ClusterInformation clusterInf = new ClusterInformation();
+            clusterInf.createClusters(3, this.getGemsList(stateObs),
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+            
+            this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+            
+            //System.out.println("<<<<<<Número de clusters: " + clusterInf.clusters.size());
 
+            //for (int i = 0; i < clusterInf.clusters.size(); i++){
+                //System.out.println("Cluster: " + i);
+                //System.out.println("PathLength: " + clusterInf.clusters.get(i).getPathLenght());
+                //System.out.println("Num rocas: " + clusterInf.clusters.get(i).getNumRocas());
+                //System.out.println("Num muros: " + clusterInf.clusters.get(i).getNumMuros());
+                //System.out.println("Dificultad: " + clusterInf.clusters.get(i).getDificultad());
+                
+                //for (int j = 0; j < clusterInf.clusters.get(i).getNumGems(); j++)
+                    //System.out.println(clusterInf.clusters.get(i).getGem(j));
+                
+                //System.out.println();
+            //}
+                 
+            // Imprimo la matriz de distancias
+            //for (int i = 0; i < clusterInf.matriz_dist.length; i++){
+                //for (int j = 0; j < clusterInf.matriz_dist.length; j++){
+                    //System.out.print(clusterInf.matriz_dist[i][j] + "\t");
+                //}
+                //System.out.print('\n');
+           //}
+            
+            this.saveCircuit(clusterInf, this.getPlayer(stateObs).getX(),
+                    this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
+                    this.getExit(stateObs).getY());
+            
+            double t2 = System.currentTimeMillis();
+
+            System.out.println("Tiempo: " + (t2 - t1) + " ms");
+            
+            System.out.println("Circuito creado:");
+            
+            for (Integer i : clusterInf.circuito)
+                System.out.println(i);
+        }
+        
         it++;
 
         //return plan.pollFirst();
         
         return Types.ACTIONS.ACTION_NIL;
-
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -385,7 +433,6 @@ public class Agent extends BaseAgent{
     // DA EXCEPCION SI LA POSICION INICIAL O FINAL ESTA SOBRE UN MURO!
     
     private int getHeuristicDistance(int xStart, int yStart, int xGoal, int yGoal){
-        //System.out.println(xStart + " " + yStart);
         if (xStart == xGoal && yStart == yGoal)
             return 0;
         
@@ -1458,103 +1505,6 @@ public class Agent extends BaseAgent{
         return probabilidadTotal;
     }
     
-    // <Clústerización> -> Tarda alrededor de 0.08 ms
-    // Uso el algoritmo DBSCAN para clasificar las gemas en clústeres (grupos)
-    // Aquellas gemas clasificadas como ruido las añado a un clúster en el que solo hay una gema
-    // epsilon: radio (en distancia Manhattan) en el que se buscan gemas para el mismo clúster
-    private ArrayList<Cluster> createClusters(int epsilon, StateObservation stateObs){
-        ArrayList<Observation> gems = this.getGemsList(stateObs);
-        int gems_size = gems.size();
-        boolean[] visited = new boolean[gems_size]; // Valor inicial -> false
-        int[] ind_cluster = new int[gems_size]; // Indice del clúster al que pertenece la gema -> -1 si no pertenece a ningún clúster todavía
-        
-        for (int i = 0; i < ind_cluster.length; i++)
-            ind_cluster[i] = -1;
-       
-        int num_cluster = -1;
-        Observation this_gem;
-        
-        for (int i = 0; i < gems_size && !visited[i]; i++){
-            this_gem = gems.get(i);
-            
-            if (ind_cluster[i] == -1){ // No ha sido visitada pero todavía no pertenece a ningún clúster -> creo un nuevo clúster y la añado
-                num_cluster++;
-                ind_cluster[i] = num_cluster; // La gema pertenece a ese clúster  
-            }
-            // Añado al clúster de la gema las gemas del vecindario
-            
-            for (int j = 0; j < gems_size; j++){ // Tengo que recorrer también las gemas ya visitadas para que funcione bien!
-                
-                if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon) // Esa gema es del vecindario -> la añado al clúster
-                    ind_cluster[j] = ind_cluster[i];
-            }
-                
-            visited[i] = true;
-        }
-        
-        ArrayList<Cluster> clusters = new ArrayList();
-        
-        for (int i = 0; i <= num_cluster; i++)
-            clusters.add(new Cluster());
-        
-        // Añado cada gema a su clúster correspondiente
-        for (int i = 0; i < gems_size; i++)
-            clusters.get(ind_cluster[i]).addGem(gems.get(i));
-   
-        // Calculo el pathLength de cada clúster
-        for (int i = 0; i <= num_cluster; i++)
-            clusters.get(i).calculatePathLength();
-        
-        return clusters;
-    }
-
-    // Obtiene las distancias aproximadas entre cada pareja de clusters usando una matriz de distancias
-    // Se calcula primero para cada pareja de clusters las dos gemas más cercanas
-    // entre sí usando la distancia Manhattan y después, con el A* simplificado, -----> NO! Por ahora uso las distancias Manhattan!
-    // se calcula la distancia entre esos dos clusters
-    private int[][] getClustersDistances(ArrayList<Cluster> clusters, StateObservation stateObs){   
-        int num_clusters = clusters.size();
-        int[][] dist_matrix = new int[num_clusters][num_clusters]; // Valor inicial -> 0
-        int num_gems_1, num_gems_2;
-        int min_dist, ind_gem_1 = -1, ind_gem_2 = -1, this_dist;
-        PathInformation plan;
-        
-        // d(a,b) = d(b,a) por lo que solo recorro la diagonal inferior de la matriz
-        for (int i = 1; i < num_clusters; i++)
-            for (int j = 0; j < i; j++){
-                // Calculo la pareja de gemas más cercanas (según dist. Manhattan) para esos dos clusters
-                num_gems_1 = clusters.get(i).getNumGems();
-                num_gems_2 = clusters.get(j).getNumGems();
-                min_dist = 1000;
-                
-                for (int k = 0; k < num_gems_1; k++)
-                    for (int l = 0; l < num_gems_2; l++){
-                        this_dist = clusters.get(i).getGem(k).getManhattanDistance(clusters.get(j).getGem(l));
-                        
-                        if (this_dist < min_dist){
-                            min_dist = this_dist;
-                            ind_gem_1 = k;
-                            ind_gem_2 = l;
-                        }
-                    }
-                 
-                // Calculo usando el A* simplificado la distancia entre esas dos gemas
-                // SI USO EL A* SIMPLIFICADO Y NO PUEDO LLEGAR A LA GEMA POR UNA ROCA, LA LONGITUD DEL PLAN ES 0!!
-                
-                /*plan = pathFinder( clusters.get(j).getGem(ind_gem_2).getX(), clusters.get(j).getGem(ind_gem_2).getY(),
-                        stateObs,
-                        new PlayerObservation(clusters.get(i).getGem(ind_gem_1).getX(),
-                                              clusters.get(i).getGem(ind_gem_1).getY(),
-                                              Orientation.N) );
-                
-                dist_matrix[i][j] = dist_matrix[j][i] = plan.plan.size(); // Guardo en la matriz el número de acciones del plan*/
-                
-                dist_matrix[i][j] = dist_matrix[j][i] = min_dist;
-            }
-        
-        return dist_matrix;
-    }
-
     private StateObservation simulateActions(StateObservation stateObs, LinkedList<Types.ACTIONS> actions) {
         StateObservation newState = stateObs.copy();
 
@@ -1677,5 +1627,130 @@ public class Agent extends BaseAgent{
         }
         
         return total_dist;
+    }
+    
+    // Obtiene las distancias aproximadas entre cada pareja de clusters usando una matriz de distancias
+    // Se calcula primero para cada pareja de clusters las dos gemas más cercanas
+    // entre sí usando la distancia Manhattan y después, con el pathfinder
+    // se calcula la distancia entre esos dos clusters
+    
+    // Guarda la matriz de distancias dentro del objeto clust_inf, de la clase Cluster Information
+    // Se ha creado como método de esta clase en vez de ClusterInformation para así poder
+    // usar getHeuristicDistance
+    private void saveClustersDistances(ClusterInformation clust_inf){   
+        int num_clusters = clust_inf.clusters.size();
+        int[][] matriz_dist = new int[num_clusters][num_clusters]; // Valor inicial -> 0
+        Cluster cluster1, cluster2;
+        int num_gems_1, num_gems_2;
+        Observation gem_act, gem_act_2;
+        int x_act, y_act;
+        int min_dist, ind_gem_1 = -1, ind_gem_2 = -1, this_dist;
+        Observation gem1, gem2;
+        int heuristic_dist;
+        PathInformation plan;
+        
+        // d(a,b) = d(b,a) por lo que solo recorro la diagonal inferior de la matriz
+        for (int i = 1; i < num_clusters; i++)
+            for (int j = 0; j < i; j++){
+                // Calculo la pareja de gemas más cercanas (según el getHeuristicDistance) para esos dos clusters 
+                cluster1 = clust_inf.clusters.get(i);
+                cluster2 = clust_inf.clusters.get(j);
+                
+                num_gems_1 = cluster1.getNumGems();
+                num_gems_2 = cluster2.getNumGems();
+                
+                min_dist = 1000;
+                
+                for (int k = 0; k < num_gems_1; k++){
+                    gem_act = cluster1.getGem(k);
+                    x_act = gem_act.getX();
+                    y_act = gem_act.getY();
+                    
+                    for (int l = 0; l < num_gems_2; l++){
+                        gem_act_2 = cluster2.getGem(l);
+                        this_dist = getHeuristicDistance(x_act, y_act, gem_act_2.getX(), gem_act_2.getY());
+                        
+                        // Valdrá -1 si no existe camino
+                        if (this_dist != -1 && this_dist < min_dist){
+                            min_dist = this_dist;
+                            ind_gem_1 = k;
+                            ind_gem_2 = l;
+                        }
+                    }
+                }
+                 
+                // Calculo usando getHeuristicDistance la distancia entre esas dos gemas
+                
+                gem1 = cluster1.getGem(ind_gem_1);
+                gem2 = cluster2.getGem(ind_gem_2);
+                heuristic_dist = getHeuristicDistance(gem1.getX(), gem1.getY(), gem2.getX(), gem2.getY());
+                             
+                matriz_dist[i][j] = matriz_dist[j][i] = heuristic_dist; // Guardo en la matriz esa distancia como la distancia entre los 2 clústeres
+            }
+        
+        clust_inf.matriz_dist = matriz_dist; // Guardo la matriz de distancias en clust_inf
+    }
+
+    // Crea el mejor circuito entre los clústeres de clust_inf y lo guarda dentro de este objeto
+    // Start se corresponde con la casilla de inicio del circuito (generalmente la posición del jugador)
+    // y Goal con la casilla de destino (generalmente la salida del nivel)
+    private void saveCircuit(ClusterInformation clust_inf, int xStart, int yStart, int xGoal, int yGoal){
+        // Creo los 2 vectores de distancias desde Start y Goal a los clústeres de clust_inf
+        int num_clusters = clust_inf.getNumClusters();
+        
+        int[] distClusterStart = new int[num_clusters];
+        int[] distClusterGoal = new int[num_clusters];
+        
+        Cluster cluster_act;
+        Observation gem_act;
+        int num_gems;
+        int min_dist_start;
+        int min_dist_goal;
+        int x_act, y_act;
+        int this_dist_start;
+        int this_dist_goal;
+        int ind_gem_start = -1;
+        int ind_gem_goal = -1;
+        Observation gem_goal, gem_start;
+        
+        for (int i = 0; i < num_clusters; i++){
+            // Calculo la pareja de gemas más cercanas (según el getHeuristicDistance) para esos dos clusters 
+            cluster_act = clust_inf.clusters.get(i);
+                
+            num_gems = cluster_act.getNumGems();
+                
+            min_dist_start = 1000;
+            min_dist_goal = 1000;
+                
+            for (int k = 0; k < num_gems; k++){
+                gem_act = cluster_act.getGem(k);
+                x_act = gem_act.getX();
+                y_act = gem_act.getY();
+                    
+                this_dist_start = getHeuristicDistance(x_act, y_act, xStart, yStart);
+                this_dist_goal = getHeuristicDistance(x_act, y_act, xGoal, yGoal);
+                        
+                // Valdrá -1 si no existe camino
+                if (this_dist_start != -1 && this_dist_start < min_dist_start){
+                    min_dist_start = this_dist_start;
+                    ind_gem_start = k;
+                }
+
+                if (this_dist_goal != -1 && this_dist_goal < min_dist_goal){
+                    min_dist_goal = this_dist_goal;
+                    ind_gem_goal = k;
+                }
+            }
+                 
+            // Calculo usando getHeuristicDistance la distancia entre esas gemas con Start y Goal    
+            gem_goal = cluster_act.getGem(ind_gem_goal);
+            gem_start = cluster_act.getGem(ind_gem_start);
+            
+            distClusterStart[i] = getHeuristicDistance(gem_start.getX(), gem_start.getY(), xStart, yStart);
+            distClusterGoal[i] = getHeuristicDistance(gem_goal.getX(), gem_goal.getY(), xGoal, yGoal);
+        }
+        
+        // Llamo al método createCircuit de clusterInformation
+        clust_inf.createCircuit(xStart, yStart, xGoal, yGoal, distClusterStart, distClusterGoal);
     }
 }
