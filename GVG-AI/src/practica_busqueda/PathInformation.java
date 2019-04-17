@@ -14,13 +14,15 @@ class PathInformation {
     ArrayList<Observation> listaCasillas;
     int distancia;
     double probabilidadEnemigos;
-    boolean foundPath;
+    boolean existsPath;
+    boolean searchComplete;
     
     PathInformation() {
         plan = new LinkedList<>();
         listaCasillas = new ArrayList<>();
         distancia = 0;
         probabilidadEnemigos = 0.0;
-        foundPath = false;
+        existsPath = false;
+        searchComplete = false;
     }
 }

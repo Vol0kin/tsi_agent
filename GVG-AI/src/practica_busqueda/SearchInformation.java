@@ -12,19 +12,23 @@ class SearchInformation {
     private HashSet<GridNode> exploredList;
     private ArrayList<boolean [][]> boulderConfigurations;
     private boolean isEmpty;
+    private int exploredStates;
+    final static private int MAX_STATES = 65000;
 
     SearchInformation() {
         this.isEmpty = true;
+        this.exploredStates = 0;
     }
 
     SearchInformation(PriorityQueue<GridNode> openList, LinkedList<GridNode> closedList, HashSet<GridNode> exploredList,
-                      ArrayList<boolean [][]> boulderConfigurations) {
+                      ArrayList<boolean [][]> boulderConfigurations, int exploredStates) {
 
         this.openList = openList;
         this.closedList = closedList;
         this.exploredList = exploredList;
         this.boulderConfigurations = boulderConfigurations;
         this.isEmpty = false;
+        this.exploredStates = exploredStates;
     }
 
 
@@ -37,4 +41,8 @@ class SearchInformation {
     ArrayList<boolean [][]> getBoulderConfigurations() { return this.boulderConfigurations; }
 
     boolean isEmpty() { return this.isEmpty; }
+
+    int getExploredStates() {return this.exploredStates; }
+
+    static int getMaxStates() { return MAX_STATES; }
 }
