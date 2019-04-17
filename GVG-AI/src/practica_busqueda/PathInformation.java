@@ -16,6 +16,8 @@ class PathInformation {
     double probabilidadEnemigos;
     boolean existsPath;
     boolean searchComplete;
+    boolean[][] boulderMap;
+    boolean[][] groundMap;
     
     PathInformation() {
         plan = new LinkedList<>();
@@ -24,5 +26,7 @@ class PathInformation {
         probabilidadEnemigos = 0.0;
         existsPath = false;
         searchComplete = false;
+        boulderMap = null;
+        groundMap = null;
     }
 }
