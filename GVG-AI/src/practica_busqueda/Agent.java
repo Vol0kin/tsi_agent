@@ -178,7 +178,7 @@ public class Agent extends BaseAgent{
         else if (!informacionPlan.foundPath){
             /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
                                          stateObs, clusterInf.clusters.get(0).getGems(),
-                                         elapsedTimer, 0);*/ // NO PUEDE HABER 
+                                         elapsedTimer, 0);*/ // NO PUEDE HABER
             informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
                                          stateObs, clusterInf.clusters.get(1).getGems(),
                                          elapsedTimer, 0);
@@ -186,9 +186,16 @@ public class Agent extends BaseAgent{
         }
         
         it++;
-        
+
+
         if (informacionPlan.foundPath){
             System.out.println(it);
+
+            if (informacionPlan.plan.isEmpty()) {
+                informacionPlan.foundPath = false;
+                return Types.ACTIONS.ACTION_NIL;
+            }
+
             return informacionPlan.plan.pollFirst();
         }
         else
@@ -751,7 +758,7 @@ public class Agent extends BaseAgent{
         GridNode currentNode;
         Observation currentObservation;
 
-        // Set constants like grid size, walls, actins, orientations and goal grid
+        // Set constants like grid size, walls, actions, orientations and goal grid
         final int XMAX = grid.length, YMAX = grid[0].length;
         final ObservationType WALL = ObservationType.WALL;
         final Types.ACTIONS[] actions = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT, Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT};
