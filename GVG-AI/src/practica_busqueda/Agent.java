@@ -33,7 +33,9 @@ public class Agent extends BaseAgent{
     private PathFinder pf;
     private boolean stop;
     
-    private HashMap<ArrayList<Observation>, Integer> mapaCircuitos; // Al iniciar 
+    private HashMap<ArrayList<Observation>, Integer> mapaCircuitos; // Al iniciar
+    
+    private ClusterInformation clusterInf;
     
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
@@ -79,143 +81,28 @@ public class Agent extends BaseAgent{
             System.out.println(camino.get(i).position);*/
         
         mapaCircuitos = new HashMap<ArrayList<Observation>, Integer>(); // Creo el mapa que usa getHeuristicGems
+        
+        clusterInf = new ClusterInformation(); // Creo la información de los clústeres
     }
     
     @Override
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         //System.out.println(elapsedTimer.remainingTimeMillis());
-        /*
-        if (iter == 0){
-            
-            // Observation Grid
-            
-            ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
         
-            for (int y = 0; y < grid[0].length; y++)
-                for (int x = 0; x < grid.length; x++)
-                    System.out.println("Fil: " + y + " Col: " + x + " Obj: " + 
-                            grid[x][y].get(0).getType());
-            
-            
-            // Obtener lista de enemigos
-            
-            ArrayList<Observation>[] enemies = this.getEnemiesList(stateObs);
-        
-            for (int i = 0; i < enemies.length; i++)
-                for (Observation obs : enemies[i])
-                    System.out.println(obs);
-            
-            
-            ArrayList<Observation> bats = this.getBatsList(stateObs);
-            ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
-            
-            System.out.println("Bats:");
-            for (Observation bat : bats)
-                System.out.println(bat);
-            
-            System.out.println("Scorpions:");
-            for (Observation scorpion : scorpions)
-                System.out.println(scorpion);
-                       
-             // Gemas
-            ArrayList<Observation> gems = this.getGemsList(stateObs);
-        
-            for (Observation obs : gems)
-                System.out.println(obs);
-            
-            // Wall, Ground, Boulder, Empty
-            
-            ArrayList<Observation> walls = this.getWallsList(stateObs);
-            ArrayList<Observation> groundTiles = this.getGroundTilesList(stateObs);
-            ArrayList<Observation> boulders = this.getBouldersList(stateObs);
-            ArrayList<Observation> emptyTiles = this.getEmptyTilesList(stateObs);
-            
-            System.out.println("Muros:");
-            for (Observation obs : walls)
-                System.out.println(obs);
-            
-            System.out.println("Casillas con suelo:");
-            for (Observation obs : groundTiles)
-                System.out.println(obs);
-            
-            System.out.println("Rocas:");
-            for (Observation obs : boulders)
-                System.out.println(obs);
-            
-            System.out.println("Casillas vacías:");
-            for (Observation obs : emptyTiles)
-                System.out.println(obs);
-           
-            
-            // Salida
-           
-            Observation exit = this.getExit(stateObs);           
-            System.out.println(exit);
-            
-            // Jugador
-           
-            PlayerObservation player = this.getPlayer(stateObs);
-            System.out.println(player);      
-            
-            // Número de gemas
-                    
-            // System.out.println(this.getNumGems(stateObs));
-            
-            // Distancias y colisiones
-            
-            PlayerObservation player = this.getPlayer(stateObs);
-            Observation enemy = this.getScorpionsList(stateObs).get(0);
-            
-            System.out.println("Colisionan?: " + player.collides(enemy));
-            System.out.println("Distancia Euclídea: " + player.getEuclideanDistance(enemy));
-            System.out.println("Distancia Manhattan: " + player.getManhattanDistance(enemy));
-            
-            
-            
-            pathFinder(1, 4, stateObs);
-            informacionPlan.probabilidadEnemigos = enemyProbability(stateObs);
-                  
-            System.out.println("Distancia del plan = " + informacionPlan.distancia); // NO ES EL NÚMERO DE ACCIONES!
-            System.out.println("Probabilidad enemigos = " + informacionPlan.probabilidadEnemigos*100 + " %");
-            
-            ArrayList<Observation> lista_casillas = informacionPlan.listaCasillas;
-            LinkedList<Types.ACTIONS> acciones = informacionPlan.plan;
-            
-            for (Observation ob : lista_casillas){
-                System.out.println("Casilla: " + ob);
-            }
-            
-            for (Types.ACTIONS act : acciones){
-                System.out.println("Acción: " + act);
-            }
-            
-            //System.out.println("Probabilidad de enemigos en el camino: " + informacionPlan.probabilidadEnemigos);
-            //System.out.println(elapsedTimer.remainingTimeMillis());
-            
-            try{
-                Thread.sleep(1000);
-            }
-            catch(InterruptedException e){}
-            
-            
-        iter++;
-        }*/
-
-        // Voy de una gema a otra hasta tener 9
-
-        // VER LO QUE PASA SI AL COGER UNA GEMA HAGO QUE PIERDA PORQUE ME QUEDE
-        // ENCERRADO O HAGO QUE UNA GEMA QUEDE ENCERRADA!!
-
-        // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
-        // ANTES DE COGERLAS)
-
-
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
-
+        /*
         if (it == 0) {
-            informacionPlan = pathExplorer(9, 4, stateObs);
+            double t1 = System.currentTimeMillis();
+            //informacionPlan = pathExplorer(9, 4, stateObs); // Tarda 1 ms aprox.
+            //informacionPlan = pathExplorer(1, 4, stateObs);
+            // informacionPlan = stateExplorer(9, 4, stateObs); -> tarda unos 63 ms!!
+            
+            informacionPlan = pathExplorer(24, 1, stateObs); // NO LLEGA PORQUE SE CHOCA CON LAS ROCA QUE ESTAN CAYENDO!!!
+            
+            double t2 = System.currentTimeMillis();
+            System.out.println("Tiempo: " + (t2 - t1) + " ms");
         }
 
         if (it > 0 && informacionPlan.plan.isEmpty()) {
@@ -242,195 +129,83 @@ public class Agent extends BaseAgent{
         }
 
         plan = informacionPlan.plan;
-
-        /*
-
-        if (plan.size() == 0){
-            // Veo si tengo el número suficiente de gemas
-            
-            if (this.getRemainingGems(stateObs) == 0){
-                informacionPlan = pathFinder(this.getExit(stateObs).getX(), this.getExit(stateObs).getY(), stateObs);
-                
-                plan = informacionPlan.plan;
-            }
-            else{
-                // Obtengo las gemas
-
-                gems = this.getGemsList(stateObs);
-
-                // Veo la gema más cercana al jugador
-
-                PlayerObservation player = this.getPlayer(stateObs);
-
-                int min = 100;
-                int i = 0;
-
-                for (Observation ob : gems){
-                    if (player.getManhattanDistance(ob) < min){
-                        // Si el camino tiene longitud 0 es porque no se puede llegar a la gema!!!!
-                        // (puede estar debajo de una roca por ejemplo) -> no tengo esa gema en cuenta
-                        informacionPlan = pathFinder(gems.get(i).getX(), gems.get(i).getY(), stateObs);
-
-                        if (informacionPlan.plan.size() > 0){
-                            min = player.getManhattanDistance(ob);
-                            ind = i;
-
-                            plan = informacionPlan.plan; // Guardo el plan para que no se borre al volver a hacer pathFinder
-                        }
-                    }
-
-                    i++;
-                }
-            }
-        }
-
-        System.out.println("Tam plan= " + plan.size());
-        
-        if (ind != -1)
-            System.out.println(gems.get(ind));
-        
-        //Types.ACTIONS action = plan.poll();
-        
-        // <Clústerización> -> Tarda alrededor de 0.08 ms
-        
-        if (primerTurno){
-            primerTurno = false;
-            ArrayList<Cluster> clusters = createClusters(3, stateObs); // Epsilon = 3 es un buen valor
-
-            System.out.println("<<<<<<Número de clusters: " + clusters.size());
-
-            for (int i = 0; i < clusters.size(); i++){
-                System.out.println("Cluster: " + i);
-                System.out.println("PathLength: " + clusters.get(i).getPathLenght());
-
-                for (int j = 0; j < clusters.get(i).getNumGems(); j++)
-                    System.out.println(clusters.get(i).getGem(j));
-            }
-            
-            // Obtengo la distancia entre los clusters
-            
-            int[][] dist_matrix = this.getClustersDistances(clusters, stateObs);
-            
-            for (int i = 0; i < dist_matrix.length; i++){
-                for (int j = 0; j < dist_matrix.length; j++){
-                    System.out.print(dist_matrix[i][j] + "\t");
-                }
-                System.out.print('\n');
-            }
-        }*/
-
-        // A partir de la iteración 2, empezando en la 0, tarda menos
-/*
-        if (it >= 2){
-            long t11 = elapsedTimer.elapsedMillis();
-
-            StateObservation estado;
-
-            for (int i = 0; i < 90; i++){
-                stateObs.advance(Types.ACTIONS.ACTION_UP);
-                estado = stateObs.copy();
-            }
-
-            long t12 = elapsedTimer.elapsedMillis();
-            long t_total = t12 - t11;
-
-            System.out.println("T total: " + t_total);
-        }*/
-
-        /*System.out.println("Prueba de distancias usando getHeuristicDistance: ");
-        System.out.println(this.getHeuristicDistance(5, 5, 5, 5));
-        System.out.println(this.getHeuristicDistance(0, 0, 5, 0)); //No, porque hay muro
-        System.out.println(this.getHeuristicDistance(-2, -2, -5, 100)); //No, porque es una posición inválida
-        System.out.println(this.getHeuristicDistance(10, 4, 10, 10));
-        System.out.println(this.getHeuristicDistance(3, 3, 10, 4));
-        System.out.println(this.getHeuristicDistance(21, 6, 24, 6));*/
-
-        // Veo si funciona bien el método getHeuristicGems
-        /*
-        if (it == 0) {
-            ArrayList<Cluster> clusters = createClusters(3, stateObs);
-            Observation jugador = super.getPlayer(stateObs);
-            int dist;
-
-            for (int i = 0; i < clusters.size(); i++) {
-                dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
-                        jugador.getY(), clusters.get(i).getGems());
-
-                for (int j = 0; j < clusters.get(i).getGems().size(); j++)
-                    System.out.println(clusters.get(i).getGem(j));
-
-                System.out.println("Cluster " + i + ": " + dist);
-            }
-
-            ArrayList<Observation> gemas = clusters.get(3).getGems();
-            
-            // Veo cuánto tarda el método getHeuristicGems
-            double t1 = System.currentTimeMillis();
-
-            for (int i = 0; i < 50000; i++){
-                dist = getHeuristicGems(jugador.getX(), jugador.getY(), jugador.getX(),
-                        jugador.getY(), gemas);
-            }
-
-            double t2 = System.currentTimeMillis();
-
-            System.out.println("Tiempo medio en ejecutar getHeuristicGems: " + ((t2 - t1) / 50000.0) + " ms");
-        }*/
-        
-        // Pruebo ClusterInformation y el resto -> FUNCIONA BIEN
-        // VER LO QUE TARDA TODO (AÑADIR CALCULO DIFICULTAD CLUSTER Y VIAJANTE COMERCIO)
- /*
-        if (it == 0){
-            double t1 = System.currentTimeMillis();
-            
-            ClusterInformation clusterInf = new ClusterInformation();
-            clusterInf.createClusters(3, this.getGemsList(stateObs),
-                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
-            
-            this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
-            
-            //System.out.println("<<<<<<Número de clusters: " + clusterInf.clusters.size());
-
-            //for (int i = 0; i < clusterInf.clusters.size(); i++){
-                //System.out.println("Cluster: " + i);
-                //System.out.println("PathLength: " + clusterInf.clusters.get(i).getPathLenght());
-                //System.out.println("Num rocas: " + clusterInf.clusters.get(i).getNumRocas());
-                //System.out.println("Num muros: " + clusterInf.clusters.get(i).getNumMuros());
-                //System.out.println("Dificultad: " + clusterInf.clusters.get(i).getDificultad());
-                
-                //for (int j = 0; j < clusterInf.clusters.get(i).getNumGems(); j++)
-                    //System.out.println(clusterInf.clusters.get(i).getGem(j));
-                
-                //System.out.println();
-            //}
-                 
-            // Imprimo la matriz de distancias
-            //for (int i = 0; i < clusterInf.matriz_dist.length; i++){
-                //for (int j = 0; j < clusterInf.matriz_dist.length; j++){
-                    //System.out.print(clusterInf.matriz_dist[i][j] + "\t");
-                //}
-                //System.out.print('\n');
-           //}
-            
-            this.saveCircuit(clusterInf, this.getPlayer(stateObs).getX(),
-                    this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
-                    this.getExit(stateObs).getY());
-            
-            double t2 = System.currentTimeMillis();
-
-            System.out.println("Tiempo: " + (t2 - t1) + " ms");
-            
-            System.out.println("Circuito creado:");
-            
-            for (Integer i : clusterInf.circuito)
-                System.out.println(i);
-        }*/
         
         it++;
 
-        return plan.pollFirst();
+        if (informacionPlan.plan.isEmpty())
+            return Types.ACTIONS.ACTION_NIL;
         
-        //return Types.ACTIONS.ACTION_NIL;
+        return plan.pollFirst();*/
+        
+        PlayerObservation jugador = this.getPlayer(stateObs);
+                    
+        ArrayList<Observation> gemas_usadas = new ArrayList();
+        gemas_usadas.add(this.getGemsList(stateObs).get(0));
+        gemas_usadas.add(this.getGemsList(stateObs).get(1));
+        gemas_usadas.add(this.getGemsList(stateObs).get(5));
+        gemas_usadas.add(this.getGemsList(stateObs).get(6));
+        gemas_usadas.add(this.getGemsList(stateObs).get(7));
+        
+        if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
+            long t1 = elapsedTimer.remainingTimeMillis();
+            clusterInf.createClusters(3, this.getGemsList(stateObs),
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+            
+            // ¡Elimino el clúster 5 al que no se puede llegar!
+            clusterInf.clusters.remove(5);
+            
+            this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+            this.saveCircuit(clusterInf, this.getPlayer(stateObs).getX(),
+                    this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
+                    this.getExit(stateObs).getY()); // Creo el camino a través de los clústeres
+            long t2 = elapsedTimer.remainingTimeMillis();
+            System.out.println(t1-t2);
+            
+            for (Observation gem : clusterInf.clusters.get(1).getGems())
+                System.out.println(gem);
+            
+            // Voy a por el primer clúster
+            /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
+                                         stateObs, clusterInf.clusters.get(0).getGems(),
+                                         elapsedTimer, 0); */ // NO PUEDE HABER UNA ROCA EN LA CASILLA FINAL
+            
+            informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
+                                         stateObs, clusterInf.clusters.get(1).getGems(),
+                                         elapsedTimer, 0);
+            
+            //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
+        }
+        else if (!informacionPlan.foundPath){
+            /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
+                                         stateObs, clusterInf.clusters.get(0).getGems(),
+                                         elapsedTimer, 0);*/ // NO PUEDE HABER 
+            informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
+                                         stateObs, clusterInf.clusters.get(1).getGems(),
+                                         elapsedTimer, 0);
+            //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
+        }
+        
+        it++;
+        
+        if (informacionPlan.foundPath){
+            System.out.println(it);
+            return informacionPlan.plan.pollFirst();
+        }
+        else
+            return Types.ACTIONS.ACTION_NIL;
+        
+        
+        /*if (it == 30){
+            informacionPlan = pathExplorer(14, 10, stateObs);
+            System.out.println(it);
+        }
+        
+        
+        
+        if (informacionPlan == null || informacionPlan.plan.isEmpty())
+            return Types.ACTIONS.ACTION_NIL;
+        else
+            return informacionPlan.plan.pollFirst();*/
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
