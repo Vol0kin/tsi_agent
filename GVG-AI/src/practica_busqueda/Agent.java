@@ -26,6 +26,7 @@ public class Agent extends BaseAgent{
     
     private boolean primerTurno = true;
     PathInformation informacionPlan;
+    private SearchInformation searchInfo;
     
     int it = 0;
     
@@ -59,6 +60,7 @@ public class Agent extends BaseAgent{
         
         pf.run(so);
         stop = false;
+        searchInfo = new SearchInformation();
         
         
         //PlayerObservation jugador = this.getPlayer(so);
@@ -207,7 +209,7 @@ public class Agent extends BaseAgent{
         // NO COGE LAS GEMAS "DIFICILES"!!! (AQUELLAS EN LAS QUE HAY QUE DESPEJAR EL CAMINO
         // ANTES DE COGERLAS)
 
-        /*
+
         ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
         LinkedList<Types.ACTIONS> plan = new LinkedList();
@@ -217,6 +219,9 @@ public class Agent extends BaseAgent{
         }
 
         if (it > 0 && informacionPlan.plan.isEmpty()) {
+            PlayerObservation pos = this.getPlayer(stateObs);
+            long threshold = 5;
+
             ArrayList<Observation> goalGems = new ArrayList<>();
             ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
             goalGems.add(grid[5][3].get(0));
@@ -224,8 +229,8 @@ public class Agent extends BaseAgent{
             goalGems.add(grid[7][3].get(0));
             goalGems.add(grid[6][1].get(0));
             goalGems.add(grid[7][1].get(0));
-            //goalGems.add(grid[1][4].get(0));
-            informacionPlan = pathExplorer(10, 1, stateObs, goalGems);
+            goalGems.add(grid[1][4].get(0));
+            informacionPlan = pathExplorer(pos, 10, 1, stateObs, goalGems, elapsedTimer, threshold);
 
             for (Types.ACTIONS action: informacionPlan.plan) {
                 System.out.println(action);
@@ -236,7 +241,7 @@ public class Agent extends BaseAgent{
             }
         }
 
-        plan = informacionPlan.plan;*/
+        plan = informacionPlan.plan;
 
         /*
 
@@ -374,7 +379,7 @@ public class Agent extends BaseAgent{
         
         // Pruebo ClusterInformation y el resto -> FUNCIONA BIEN
         // VER LO QUE TARDA TODO (AÑADIR CALCULO DIFICULTAD CLUSTER Y VIAJANTE COMERCIO)
-        
+ /*
         if (it == 0){
             double t1 = System.currentTimeMillis();
             
@@ -419,13 +424,13 @@ public class Agent extends BaseAgent{
             
             for (Integer i : clusterInf.circuito)
                 System.out.println(i);
-        }
+        }*/
         
         it++;
 
-        //return plan.pollFirst();
+        return plan.pollFirst();
         
-        return Types.ACTIONS.ACTION_NIL;
+        //return Types.ACTIONS.ACTION_NIL;
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -950,66 +955,93 @@ public class Agent extends BaseAgent{
         return plan;
     }
 
-    private PathInformation pathExplorer(int xGoal, int yGoal, StateObservation stateObs, ArrayList<Observation> goalGems) {
+    private PathInformation pathExplorer(PlayerObservation startingPos, int xGoal, int yGoal,
+                                         StateObservation stateObs, ArrayList<Observation> goalGems,
+                                         ElapsedCpuTimer elapsedTimer, long timeThreshold) {
         // Creo el objeto que va a guardar la información para el método getHeuristicGems
         // sobre la distancia de las distintas listas de gemas
         mapaCircuitos.clear();
-        
+
+        // Create new plan
         PathInformation plan = new PathInformation();
-        PriorityQueue<GridNode> openList = new PriorityQueue<>(
-                (GridNode n1, GridNode n2) -> n1.getfCost() - n2.getfCost());
-        LinkedList<GridNode> closedList = new LinkedList<>();
-        HashSet<GridNode> exploredList = new HashSet<>();
 
-        final ObservationType WALL = ObservationType.WALL;
-
-        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
-        PlayerObservation playerPos = this.getPlayer(stateObs);
+        // Set up boolean values for found gem and timeout
         boolean foundGoal = false;
+        boolean timeout = false;
 
+        // Get game grid
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+
+        // Create variables for current node and observation
         GridNode currentNode;
         Observation currentObservation;
 
+        // Set constants like grid size, walls, actins, orientations and goal grid
+        final int XMAX = grid.length, YMAX = grid[0].length;
+        final ObservationType WALL = ObservationType.WALL;
         final Types.ACTIONS[] actions = {Types.ACTIONS.ACTION_UP, Types.ACTIONS.ACTION_RIGHT, Types.ACTIONS.ACTION_DOWN, Types.ACTIONS.ACTION_LEFT};
         final Orientation[] orientations = {Orientation.N, Orientation.E, Orientation.S, Orientation.W};
         final Observation goal = grid[xGoal][yGoal].get(0);
 
+        // Crate datastructures that will store the information
+        PriorityQueue<GridNode> openList;
+        LinkedList<GridNode> closedList;
+        HashSet<GridNode> exploredList;
+        ArrayList<boolean [][]> boulderConfigurations;
 
-        final int XMAX = grid.length,
-                YMAX = grid[0].length;
+
+        // If there was no previous information about a search, create new information
+        if (searchInfo.isEmpty()) {
+            openList = new PriorityQueue<>( (GridNode n1, GridNode n2) -> n1.getfCost() - n2.getfCost() );
+            closedList = new LinkedList<>();
+            exploredList = new HashSet<>();
+            boulderConfigurations = new ArrayList<>();
 
 
-        // Boulder map (contains boulders and walls)
-        boolean[][] boulderMap = new boolean[XMAX][YMAX];
-        ArrayList<Observation> boulders = this.getBouldersList(stateObs);
-        ArrayList<Observation> walls = this.getWallsList(stateObs);
+            // Boulder map (contains boulders and walls)
+            boolean[][] boulderMap = new boolean[XMAX][YMAX];
+            ArrayList<Observation> boulders = this.getBouldersList(stateObs);
+            ArrayList<Observation> walls = this.getWallsList(stateObs);
 
-        boulders.addAll(walls);
+            boulders.addAll(walls);
 
-        UtilAlgorithms.initMap(boulderMap, boulders, XMAX, YMAX);
+            UtilAlgorithms.initMap(boulderMap, boulders, XMAX, YMAX);
 
-        // Create ArrayList containing boulder configurations
-        ArrayList<boolean [][]> boulderConfigurations = new ArrayList<>();
-        boulderConfigurations.add(boulderMap);
+            // Create ArrayList containing boulder configurations
+            boulderConfigurations.add(boulderMap);
 
-        // Ground map
-        boolean[][] groundMap = new boolean[XMAX][YMAX];
-        ArrayList<Observation> groundList = this.getGroundTilesList(stateObs);
+            // Ground map
+            boolean[][] groundMap = new boolean[XMAX][YMAX];
+            ArrayList<Observation> groundList = this.getGroundTilesList(stateObs);
 
-        UtilAlgorithms.initMap(groundMap, groundList, XMAX, YMAX);
+            UtilAlgorithms.initMap(groundMap, groundList, XMAX, YMAX);
 
-        // Gems map
-        boolean[][] gemsMap = new boolean[XMAX][YMAX];
-        ArrayList<Observation> gemsList = this.getGemsList(stateObs);
+            // Gems map
+            boolean[][] gemsMap = new boolean[XMAX][YMAX];
+            ArrayList<Observation> gemsList = this.getGemsList(stateObs);
 
-        UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
+            UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
 
-        // Add first node
-        openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
-                null, playerPos, playerPos.getOrientation(), 0,
-                groundMap, gemsMap, false, goalGems.size(), goalGems, null));
+            // Add first node
+            openList.add(new GridNode(0, this.getHeuristicDistance(startingPos, goal),
+                    null, startingPos, startingPos.getOrientation(), 0,
+                    groundMap, gemsMap, false, goalGems.size(), goalGems, null));
+        } else {
+            // Load previous search information if there was a timeout
+            openList = searchInfo.getOpenList();
+            closedList = searchInfo.getClosedList();
+            exploredList = searchInfo.getExploredList();
+            boulderConfigurations = searchInfo.getBoulderConfigurations();
+        }
 
         while (!foundGoal && !openList.isEmpty()) {
+
+            // Check wether there's a timeout
+            if (elapsedTimer.remainingTimeMillis() <= timeThreshold) {
+                timeout = true;
+                break;
+            }
+
             // Get first node
             currentNode = openList.poll();
 
@@ -1057,6 +1089,7 @@ public class Agent extends BaseAgent{
                         UtilAlgorithms.copy2DArray(currentGround, nextGround, XMAX, YMAX);
                         UtilAlgorithms.copy2DArray(currentGems, nextGemsMap, XMAX, YMAX);
 
+                        // Set the grid ground as digged (false)
                         nextGround[x][y] = false;
 
                         // Add actions
@@ -1088,9 +1121,8 @@ public class Agent extends BaseAgent{
                             int boulderPos = y - 1;
                             int emptyPos = y + 1;
 
-                            /* Find out number of boulders above the current grid
-                               and the index of the highest grid containing a boulder
-                             */
+                            // Find out number of boulders above the current grid
+                            // and the index of the highest grid containing a boulder
                             while (newBoulders[x][boulderPos] && !grid[x][boulderPos].get(0).getType().equals(WALL)) {
                                 numberBoulders++;
                                 boulderPos--;
@@ -1127,6 +1159,7 @@ public class Agent extends BaseAgent{
 
                         }
 
+                        // Compute the heuristic value (h)
                         int heuristic;
 
                         if (nextRemainingGems > 0) {
@@ -1153,7 +1186,12 @@ public class Agent extends BaseAgent{
             closedList.addFirst(currentNode);
         }
 
-
+        // Check wether there's a timeout
+        if (timeout) {
+            searchInfo = new SearchInformation(openList, closedList, exploredList, boulderConfigurations);
+            plan.plan.add(Types.ACTIONS.ACTION_NIL);
+            return plan;
+        }
 
         // Save the path information
         if (foundGoal) {
@@ -1162,8 +1200,10 @@ public class Agent extends BaseAgent{
             plan = parsePlan(path);
         } else {
             System.out.println("no encontrado");
+            plan.foundPath = false;
         }
 
+        searchInfo = new SearchInformation();
         return plan;
     }
 
@@ -1189,6 +1229,8 @@ public class Agent extends BaseAgent{
 
         plan.listaCasillas.add(0, gridPath.getPosition());
         plan.distancia++;
+
+        plan.foundPath = true;
 
         return plan;
     }
