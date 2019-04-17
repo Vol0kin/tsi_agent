@@ -171,28 +171,29 @@ public class Agent extends BaseAgent{
             
             informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
                                          stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 0);
+                                         elapsedTimer, 5);
             
             //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
         }
-        else if (!informacionPlan.foundPath){
+        else if (!informacionPlan.searchComplete){
             /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
                                          stateObs, clusterInf.clusters.get(0).getGems(),
                                          elapsedTimer, 0);*/ // NO PUEDE HABER
             informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
                                          stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 0);
+                                         elapsedTimer, 5);
             //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
         }
         
         it++;
 
 
-        if (informacionPlan.foundPath){
+        if (informacionPlan.existsPath){
             System.out.println(it);
+            System.out.println(informacionPlan.existsPath);
+            System.out.println(informacionPlan.searchComplete);
 
             if (informacionPlan.plan.isEmpty()) {
-                informacionPlan.foundPath = false;
                 return Types.ACTIONS.ACTION_NIL;
             }
 
@@ -551,7 +552,7 @@ public class Agent extends BaseAgent{
         return plan;
     }*/
 
-    private PathInformation pathExplorer(int xGoal, int yGoal, StateObservation stateObs) {
+    private PathInformation pathExplorer(PlayerObservation startingPos, int xGoal, int yGoal, StateObservation stateObs) {
         PathInformation plan = new PathInformation();
         PriorityQueue<GridNode> openList = new PriorityQueue<>(
                 (GridNode n1, GridNode n2) -> n1.getfCost() - n2.getfCost());
@@ -561,7 +562,6 @@ public class Agent extends BaseAgent{
         final ObservationType WALL = ObservationType.WALL;
 
         ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
-        PlayerObservation playerPos = this.getPlayer(stateObs);
         boolean foundGoal = false;
 
         GridNode currentNode;
@@ -602,8 +602,8 @@ public class Agent extends BaseAgent{
         UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
 
         // Add first node
-        openList.add(new GridNode(0, this.getHeuristicDistance(playerPos, goal),
-                null, playerPos, playerPos.getOrientation(), 0,
+        openList.add(new GridNode(0, this.getHeuristicDistance(startingPos, goal),
+                null, startingPos, startingPos.getOrientation(), 0,
                 groundMap, gemsMap, false, 0, null, null));
 
         while (!foundGoal && !openList.isEmpty()) {
@@ -732,7 +732,10 @@ public class Agent extends BaseAgent{
             plan = parsePlan(path);
         } else {
             System.out.println("no encontrado");
+            plan.existsPath = false;
         }
+
+        plan.searchComplete = true;
 
         return plan;
     }
@@ -770,6 +773,7 @@ public class Agent extends BaseAgent{
         LinkedList<GridNode> closedList;
         HashSet<GridNode> exploredList;
         ArrayList<boolean [][]> boulderConfigurations;
+        int exploredStates;
 
 
         // If there was no previous information about a search, create new information
@@ -778,6 +782,7 @@ public class Agent extends BaseAgent{
             closedList = new LinkedList<>();
             exploredList = new HashSet<>();
             boulderConfigurations = new ArrayList<>();
+            exploredStates = 1;
 
 
             // Boulder map (contains boulders and walls)
@@ -814,6 +819,7 @@ public class Agent extends BaseAgent{
             closedList = searchInfo.getClosedList();
             exploredList = searchInfo.getExploredList();
             boulderConfigurations = searchInfo.getBoulderConfigurations();
+            exploredStates = searchInfo.getExploredStates();
         }
 
         while (!foundGoal && !openList.isEmpty()) {
@@ -821,6 +827,10 @@ public class Agent extends BaseAgent{
             // Check wether there's a timeout
             if (elapsedTimer.remainingTimeMillis() <= timeThreshold) {
                 timeout = true;
+                break;
+            }
+
+            if (exploredStates >= SearchInformation.getMaxStates()) {
                 break;
             }
 
@@ -958,6 +968,7 @@ public class Agent extends BaseAgent{
 
                         // Add the node to the explored list
                         if (exploredList.add(node)) {
+                            exploredStates++;
                             openList.add(node);
                         }
                     }
@@ -967,13 +978,14 @@ public class Agent extends BaseAgent{
             // Add the current node to the closed list
             closedList.addFirst(currentNode);
         }
-
+        System.out.println("Estados explorados al salir del bucle: " + exploredStates + " " + timeout);
         // Check wether there's a timeout
         if (timeout) {
-            searchInfo = new SearchInformation(openList, closedList, exploredList, boulderConfigurations);
+            searchInfo = new SearchInformation(openList, closedList, exploredList, boulderConfigurations, exploredStates);
             plan.plan.add(Types.ACTIONS.ACTION_NIL);
             return plan;
         }
+
 
         // Save the path information
         if (foundGoal) {
@@ -982,8 +994,10 @@ public class Agent extends BaseAgent{
             plan = parsePlan(path);
         } else {
             System.out.println("no encontrado");
-            plan.foundPath = false;
+            plan.existsPath = false;
         }
+
+        plan.searchComplete = true;
 
         searchInfo = new SearchInformation();
         return plan;
@@ -1012,7 +1026,7 @@ public class Agent extends BaseAgent{
         plan.listaCasillas.add(0, gridPath.getPosition());
         plan.distancia++;
 
-        plan.foundPath = true;
+        plan.existsPath = true;
 
         return plan;
     }
