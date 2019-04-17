@@ -89,9 +89,9 @@ public class Agent extends BaseAgent{
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         //System.out.println(elapsedTimer.remainingTimeMillis());
         
-        ArrayList<Observation> gems = new ArrayList();
+        /*ArrayList<Observation> gems = new ArrayList();
         int ind = -1;
-        LinkedList<Types.ACTIONS> plan = new LinkedList();
+        LinkedList<Types.ACTIONS> plan = new LinkedList();*/
         /*
         if (it == 0) {
             double t1 = System.currentTimeMillis();
@@ -137,17 +137,12 @@ public class Agent extends BaseAgent{
         
         return plan.pollFirst();*/
         
+        
+        
+        /*
         PlayerObservation jugador = this.getPlayer(stateObs);
-                    
-        ArrayList<Observation> gemas_usadas = new ArrayList();
-        gemas_usadas.add(this.getGemsList(stateObs).get(0));
-        gemas_usadas.add(this.getGemsList(stateObs).get(1));
-        gemas_usadas.add(this.getGemsList(stateObs).get(5));
-        gemas_usadas.add(this.getGemsList(stateObs).get(6));
-        gemas_usadas.add(this.getGemsList(stateObs).get(7));
         
         if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
-            long t1 = elapsedTimer.remainingTimeMillis();
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
             
@@ -156,63 +151,105 @@ public class Agent extends BaseAgent{
             
             this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
             this.saveCircuit(clusterInf, this.getPlayer(stateObs).getX(),
-                    this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
-                    this.getExit(stateObs).getY()); // Creo el camino a través de los clústeres
-            long t2 = elapsedTimer.remainingTimeMillis();
-            System.out.println(t1-t2);
+            this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
+            this.getExit(stateObs).getY()); // Creo el camino a través de los clústeres
             
             for (Observation gem : clusterInf.clusters.get(1).getGems())
                 System.out.println(gem);
             
-            // Voy a por el primer clúster
-            /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
-                                         stateObs, clusterInf.clusters.get(0).getGems(),
-                                         elapsedTimer, 0); */ // NO PUEDE HABER UNA ROCA EN LA CASILLA FINAL
+            // Voy a por el primer clúster -> NO PUEDE HABER UNA ROCA EN LA CASILLA FINAL
             
             informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
                                          stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 0);
-            
-            //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
+                                         elapsedTimer, 15);
         }
-        else if (!informacionPlan.foundPath){
-            /*informacionPlan = pathExplorer(jugador, jugador.getX()+1, jugador.getY(),
-                                         stateObs, clusterInf.clusters.get(0).getGems(),
-                                         elapsedTimer, 0);*/ // NO PUEDE HABER
+        else if (!informacionPlan.foundPath){ // Todavía no ha terminado la búsqueda
             informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
                                          stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 0);
-            //System.out.println("Camino encontrado: " + informacionPlan.foundPath);
+                                         elapsedTimer, 15);
+            System.out.println("It " + it + " - búsqueda no terminada");
         }
         
         it++;
 
 
         if (informacionPlan.foundPath){
-            System.out.println(it);
+            System.out.println("It " + it + " - búsqueda terminada!!");
 
             if (informacionPlan.plan.isEmpty()) {
-                informacionPlan.foundPath = false;
                 return Types.ACTIONS.ACTION_NIL;
             }
 
             return informacionPlan.plan.pollFirst();
         }
         else
+            return Types.ACTIONS.ACTION_NIL;*/
+        
+        
+        // DESDE AQUI ----------------------------------
+        
+        PlayerObservation jugador = this.getPlayer(stateObs);
+        Observation salida = this.getExit(stateObs);
+        
+        /*if (it < 5){ Esperaba varias iteraciones para que no se chocara con la roca que está cayendo
+            it++;
             return Types.ACTIONS.ACTION_NIL;
+        }*/
         
-        
-        /*if (it == 30){
-            informacionPlan = pathExplorer(14, 10, stateObs);
-            System.out.println(it);
+        if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
+            clusterInf.createClusters(3, this.getGemsList(stateObs),
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+            
+            // > ¡Elimino el clúster 5 al que no se puede llegar!
+            clusterInf.clusters.remove(5);
+            
+            this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+            this.saveCircuit(clusterInf, jugador.getX(),
+            jugador.getY(), salida.getX(),
+            salida.getY()); // Creo el camino a través de los clústeres
+            
+            // Creo el camino para acercarme al primer clúster
+            Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(5); // DEBERIA SER LA MAS CERCANA, NO LA 0!!
+            
+            informacionPlan = pathExplorer(primera_gema.getX(), primera_gema.getY(), stateObs);
         }
         
+        it++;
         
-        
-        if (informacionPlan == null || informacionPlan.plan.isEmpty())
-            return Types.ACTIONS.ACTION_NIL;
+        if (informacionPlan.foundPath){
+            if (informacionPlan.plan.isEmpty())
+                return Types.ACTIONS.ACTION_NIL;
+            else{
+                Types.ACTIONS accion = informacionPlan.plan.peekFirst(); // No borro la acción por si no se ejecuta
+                
+                // Veo si la acción que tengo que hacer va a hacer que muera el jugador
+                StateObservation estado_avanzado = stateObs.copy();
+                estado_avanzado.advance(accion);
+                
+                PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado);
+                
+                if (jugador_sig_estado.hasDied())
+                    System.out.println("Va a morir!"); // Funciona con las rocas. Con los enemigos no, al ser estocástico
+                
+                // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo -> FUNCIONA
+                // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
+                if (jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
+                    
+                    // Compruebo que la siguiente acción no se corresponde con un cambio de orientación
+                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL){
+                        System.out.println("Se ha chocado con una roca!");
+                        return Types.ACTIONS.ACTION_NIL;
+                    }
+                }
+                
+                informacionPlan.plan.removeFirst(); // Como voy a ejecutar la acción, la quito
+                
+                return accion;
+            }
+        }
         else
-            return informacionPlan.plan.pollFirst();*/
+            return Types.ACTIONS.ACTION_NIL;
+        
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre

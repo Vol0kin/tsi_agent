@@ -21,6 +21,12 @@ public class ClusterInformation {
         return clusters.size();
     }
     
+    // Obtiene las gemas del clúster número i del circuito
+    
+    public ArrayList<Observation> getGemsCircuitCluster(int i){
+        return clusters.get(circuito.get(i)).getGems();
+    }
+    
     // <Clústerización> -> Tarda alrededor de 0.08 ms
     // Uso el algoritmo DBSCAN para clasificar las gemas en clústeres (grupos)
     // Aquellas gemas clasificadas como ruido las añado a un clúster en el que solo hay una gema
