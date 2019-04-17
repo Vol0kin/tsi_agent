@@ -16,6 +16,7 @@ public class ClusterInformation {
     public ArrayList<Cluster> clusters;
     public int[][] matriz_dist;
     public ArrayList<Integer> circuito; // circuito.get(i) es el índice de la ciudad nº "i" a visitar
+    public ArrayList<Integer> nodos_circuito; // Sucesión de enteros que representan los nodos(gemas) que unen a los clústeres
   
     public int getNumClusters(){
         return clusters.size();
@@ -214,5 +215,15 @@ public class ClusterInformation {
                 if (mejor_sol[i] != -1)
                     circuito.add(new Integer(mejor_sol[i]));
         }
+    }
+
+    // Método que mira si se ha cogido alguna gema que antes pertenecía al clúster
+    // Si ese es el caso (hay una gema que no está en remaining_gems) la borra
+    // del clúster.
+    // NO vuelve a calcular su dificultad, distancia, etc.
+    // Ind_clúster es el índice de clusters, no de los clusters del circuito!
+    
+    public void removeCapturedGems(int ind_cluster, ArrayList<Observation> remaining_gems){
+        clusters.get(ind_cluster).removeCapturedGems(remaining_gems);
     }
 }

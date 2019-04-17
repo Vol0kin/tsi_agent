@@ -191,11 +191,6 @@ public class Agent extends BaseAgent{
         PlayerObservation jugador = this.getPlayer(stateObs);
         Observation salida = this.getExit(stateObs);
         
-        /*if (it < 5){ Esperaba varias iteraciones para que no se chocara con la roca que está cayendo
-            it++;
-            return Types.ACTIONS.ACTION_NIL;
-        }*/
-        
         if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
@@ -208,17 +203,49 @@ public class Agent extends BaseAgent{
             jugador.getY(), salida.getX(),
             salida.getY()); // Creo el camino a través de los clústeres
             
+            // Creo los nodos del circuito -> Para un clúster, la misma gema puede ser nodo de salida y entrada!
+            this.saveCircuitNodes(clusterInf, jugador.getX(), jugador.getY(),
+                    salida.getX(), salida.getY());
+            
+            for (int i = 0, j = 0; i < clusterInf.nodos_circuito.size(); i+=2, j++){
+                System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i)));
+                System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i+1)));
+                System.out.println();
+            }
+            
             // Creo el camino para acercarme al primer clúster
-            Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(5); // DEBERIA SER LA MAS CERCANA, NO LA 0!!
+            Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0));
+            
+            System.out.println(clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0)));
             
             informacionPlan = pathExplorer(primera_gema.getX(), primera_gema.getY(), stateObs);
+            
+            // QUITAR GEMA DE ESE CLUSTER TRAS SER ALCANZADA Y USAR EL OTRO A* PARA COGER LAS DEMAS!    
+            
+            System.out.println();
         }
         
         it++;
         
         if (informacionPlan.existsPath){
-            if (informacionPlan.plan.isEmpty())
+            if (informacionPlan.plan.isEmpty()){
+                System.out.println("Plan vacio");
+                
+                // Elimino las gemas ya cogidas del clúster 0 del circuito -> FUNCIONA
+                clusterInf.removeCapturedGems(clusterInf.circuito.get(0), this.getGemsList(stateObs));
+
+                // Ahora cojo las gemas restantes del clúster 0 del circuito usando el pathExplorer
+                ArrayList<Observation> gemas_a_coger = clusterInf.getGemsCircuitCluster(0);
+                Observation gem_obj = gemas_a_coger.get(clusterInf.nodos_circuito.get(1));
+                
+                System.out.println("Lista de gemas a coger: " + gemas_a_coger);
+                
+                informacionPlan = pathExplorer(24, 10,
+                                         stateObs, gemas_a_coger,
+                                         elapsedTimer, 5);
+                
                 return Types.ACTIONS.ACTION_NIL;
+            }
             else{
                 Types.ACTIONS accion = informacionPlan.plan.peekFirst(); // No borro la acción por si no se ejecuta
                 
@@ -233,23 +260,57 @@ public class Agent extends BaseAgent{
                 
                 // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo -> FUNCIONA
                 // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
+                // Excepción -> cuando en la casilla siguiente hay una gema y encima hay una roca, la orientación y posición del jugador
+                // no cambian (pero sí es un movimiento válido)
+                boolean hay_gema = false;
+                
                 if (jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
+                    ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+                    int x_jug = jugador.getX();
+                    int y_jug = jugador.getY();
+                    
+                    if (jugador.getOrientation() == Orientation.N){
+                        for (Observation obs : grid[x_jug][y_jug-1]){
+                            if (obs.getType() == ObservationType.GEM)
+                                hay_gema = true;
+                        }   
+                    }
+                    else if (jugador.getOrientation() == Orientation.S){
+                        for (Observation obs : grid[x_jug][y_jug+1]){
+                            if (obs.getType() == ObservationType.GEM)
+                                hay_gema = true;
+                        }
+                    }
+                    else if (jugador.getOrientation() == Orientation.E){
+                        for (Observation obs : grid[x_jug+1][y_jug]){
+                            if (obs.getType() == ObservationType.GEM)
+                                hay_gema = true;
+                        }
+                    }
+                    else if (jugador.getOrientation() == Orientation.W){
+                        for (Observation obs : grid[x_jug-1][y_jug]){
+                            if (obs.getType() == ObservationType.GEM)
+                                hay_gema = true;
+                        }
+                    }
                     
                     // Compruebo que la siguiente acción no se corresponde con un cambio de orientación
-                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL){
-                        System.out.println("Se ha chocado con una roca!");
+                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL && !hay_gema){
+                        //System.out.println("Se ha chocado con una roca!");
                         return Types.ACTIONS.ACTION_NIL;
                     }
                 }
                 
                 informacionPlan.plan.removeFirst(); // Como voy a ejecutar la acción, la quito
                 
+                //System.out.println(accion);
                 return accion;
             }
         }
-        else
+        else{
             return Types.ACTIONS.ACTION_NIL;
-        
+        }
+
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -782,6 +843,14 @@ public class Agent extends BaseAgent{
         return plan;
     }
 
+    // Sobrecarga de pathExplorer para cuando la posición de inicio es la del
+    // jugador de stateObs
+    private PathInformation pathExplorer(int xGoal, int yGoal,
+                                         StateObservation stateObs, ArrayList<Observation> goalGems,
+                                         ElapsedCpuTimer elapsedTimer, long timeThreshold){
+        return pathExplorer(this.getPlayer(stateObs), xGoal, yGoal, stateObs, goalGems, elapsedTimer, timeThreshold);
+    } 
+    
     private PathInformation pathExplorer(PlayerObservation startingPos, int xGoal, int yGoal,
                                          StateObservation stateObs, ArrayList<Observation> goalGems,
                                          ElapsedCpuTimer elapsedTimer, long timeThreshold) {
@@ -1632,5 +1701,122 @@ public class Agent extends BaseAgent{
         
         // Llamo al método createCircuit de clusterInformation
         clust_inf.createCircuit(xStart, yStart, xGoal, yGoal, distClusterStart, distClusterGoal);
+    }
+
+    // Se tiene que llamar después de saveCircuit
+    // No es método de ClusterInformation porque quiero usar getHeuristicDistance
+    // Guarda en clust_inf las gemas que funcionan como nodos del circuito
+    // Estos nodos (gemas) serán los puntos exactos que unirán los distintos
+    // clústeres. El pathExplorer sencillo (sin coger gemas) se lanzará
+    // entre el nodo de salida de un clúster y el nodo de entrada del siguiente clúster
+    // Algoritmo: voy recorriendo los clústeres del circuito y para cada pareja
+    // de clústeres contiguos (en el circuito) calculo la pareja de gemas más cercanas
+    // La gema del clúster i será el nodo de salida del clúster i y la gema del clúster
+    // i+1 en el circuito será el nodo de entrada del clúster i+1. Todos los clústeres
+    // tienen un nodo de salida y otro de entrada. El nodo de entrada del primer clúster
+    // se conecta con la casilla Start y el nodo de salida del último clúster con
+    // xGoal, yGoal
+    
+    private void saveCircuitNodes(ClusterInformation clust_inf, int xStart, int yStart, int xGoal, int yGoal){
+        ArrayList<Observation> gems;
+        int num_gems;
+        Observation gem_act;
+        int dist;
+        int min_dist;
+        int ind_min = -1;
+        
+        // Unión de Start con el primer clúster -> elijo la gema del primer clúster más cercana a start
+        gems = clust_inf.getGemsCircuitCluster(0);
+        min_dist = 10000;
+        num_gems = gems.size();
+        
+        for (int i = 0; i < num_gems; i++){ // Recorro las gemas del primer clúster del circuito
+            gem_act = gems.get(i);
+            dist = this.getHeuristicDistance(xStart, yStart, gem_act.getX(), gem_act.getY());
+            
+            if (dist < min_dist){
+                min_dist = dist;
+                ind_min = i;
+            }
+        }
+        
+        clust_inf.nodos_circuito = new ArrayList<>();
+        clust_inf.nodos_circuito.add(new Integer(ind_min));
+        
+        // Uniones de cada clúster con el siguiente, empezando por el clúster 0 -> parejas nodo_salida, nodo_entrada
+        int ind_min_1 = -1; // Indices del par de gemas más cercanas
+        int ind_min_2 = -1;
+        ArrayList<Observation> gems_1;
+        ArrayList<Observation> gems_2;
+        int num_gems_1;
+        int num_gems_2;
+        
+        
+        for (int k = 0; k < clust_inf.circuito.size()-1; k++){ // Recorro cada pareja de clústeres -> parejas: k con k+1
+            gems_1 = clust_inf.getGemsCircuitCluster(k);
+            gems_2 = clust_inf.getGemsCircuitCluster(k+1);
+            num_gems_1 = gems_1.size();
+            num_gems_2 = gems_2.size();
+            ind_min_1 = 0; // Intento no repetir gemas, pero si no hay más remedio (clúster de 1 sola gema), se escoge esa
+            min_dist = 10000;
+            Observation gem_1_act;
+            
+            if (num_gems_1 == 1){ // Si solo hay una gema tengo que escoger esa
+                for (int i = 0; i < num_gems_1; i++){ // Recorro las gemas del primer clúster
+                    gem_1_act = gems_1.get(i);
+
+                    for (int j = 0; j < num_gems_2; j++){ // Recorro las gemas del segundo clúster
+                        dist = this.getHeuristicDistance(gem_1_act.getX(), gem_1_act.getY(),
+                                gems_2.get(j).getX(), gems_2.get(j).getY());
+
+                        if (dist < min_dist){
+                            min_dist = dist;
+                            ind_min_2 = j;
+                            ind_min_1 = i;
+                        }
+                    }
+                }
+            }
+            else{
+                int ultimo_valor = clust_inf.nodos_circuito.get(clust_inf.nodos_circuito.size()-1);
+                
+                for (int i = 0; i < num_gems_1; i++){ // Recorro las gemas del primer clúster
+                    if (i != ultimo_valor){    
+                        gem_1_act = gems_1.get(i);
+
+                        for (int j = 0; j < num_gems_2; j++){ // Recorro las gemas del segundo clúster
+                            dist = this.getHeuristicDistance(gem_1_act.getX(), gem_1_act.getY(),
+                                    gems_2.get(j).getX(), gems_2.get(j).getY());
+
+                            if (dist < min_dist){
+                                min_dist = dist;
+                                ind_min_2 = j;
+                                ind_min_1 = i;
+                            }
+                        }
+                    }
+                }   
+            }
+            
+            clust_inf.nodos_circuito.add(ind_min_1);
+            clust_inf.nodos_circuito.add(ind_min_2);
+        }
+        
+        // Por último añado el nodo de salida del último clúster: lo uno con la casilla Goal
+        gems = clust_inf.getGemsCircuitCluster(clust_inf.circuito.size()-1); // obtengo las gemas del último clúster
+        min_dist = 10000;
+        num_gems = gems.size();
+        
+        for (int i = 0; i < num_gems; i++){ // Recorro las gemas del último clúster
+            gem_act = gems.get(i);
+            dist = this.getHeuristicDistance(xGoal, yGoal, gem_act.getX(), gem_act.getY());
+            
+            if (dist < min_dist){
+                min_dist = dist;
+                ind_min = i;
+            }
+        }
+        
+        clust_inf.nodos_circuito.add(new Integer(ind_min));
     }
 }

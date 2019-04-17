@@ -2,6 +2,8 @@ package practica_busqueda;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Arrays.*;
+import java.util.Collections;
 
 // Clúster de gemas
 // Guarda toda la información necesaria sobre el clúster
@@ -164,5 +166,29 @@ public class Cluster {
         valor = (float) (pathLength + numMuros + numRocas*1.5);
         
         dificultad = (int)Math.ceil(valor);
+    }
+
+    // Elimina las gemas del clúster que no están en remaining_gems
+    public void removeCapturedGems(ArrayList<Observation> remaining_gems){
+        boolean gema_encontrada;
+        Observation gem_cluster;
+        int num_gems_cluster = gems.size();
+        ArrayList<Observation> gemas_a_eliminar = new ArrayList<>();
+        
+        for (int i = 0; i < num_gems_cluster; i++){
+            gem_cluster = gems.get(i);
+            gema_encontrada = false;
+            
+            for (Observation gem_mapa : remaining_gems){
+                if (gem_cluster.getX() == gem_mapa.getX() && gem_cluster.getY() == gem_mapa.getY())
+                    gema_encontrada = true;
+            }
+            
+            if (!gema_encontrada) // Si no se ha encontrado la gema, ya no existe -> la elimino
+                gemas_a_eliminar.add(gem_cluster);
+        }
+        
+        for (Observation this_gem : gemas_a_eliminar) // Elimino las gemas que ya no existen
+            gems.remove(this_gem);
     }
 }
