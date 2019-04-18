@@ -231,22 +231,25 @@ public class Agent extends BaseAgent{
             informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
                                          elapsedTimer, 0);
-            
             it++;
             return Types.ACTIONS.ACTION_NIL;
         }
-        
-        informacionPlan = pathExplorer(x_search, y_search,
-                                         stateObs, gems_search,
-                                         elapsedTimer, 0);
+
+        if (!informacionPlan.searchComplete) {
+            informacionPlan = pathExplorer(x_search, y_search,
+                    stateObs, gems_search,
+                    elapsedTimer, 0);
+        }
+
         
         if (informacionPlan.searchComplete){
             System.out.println("Camino encontrado - it=" + it);
             System.out.println(informacionPlan.plan);
             
-            if (informacionPlan.plan.isEmpty())
+            if (informacionPlan.plan.isEmpty()) {
                 return Types.ACTIONS.ACTION_NIL;
-            else{
+
+            } else{
                 return informacionPlan.plan.pollFirst();
             }
             
