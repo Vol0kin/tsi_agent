@@ -1112,7 +1112,7 @@ public class Agent extends BaseAgent{
             plan.boulderMap = boulderConfigurations.get(path.getBoulderIndex());
             plan = parsePlan(path);
         } else {
-            System.out.println("no encontrado");
+            System.out.println("no encontrado " + exploredStates);
             plan.existsPath = false;
         }
 

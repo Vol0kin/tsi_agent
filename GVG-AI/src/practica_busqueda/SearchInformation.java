@@ -13,7 +13,7 @@ class SearchInformation {
     private ArrayList<boolean [][]> boulderConfigurations;
     private boolean isEmpty;
     private int exploredStates;
-    final static private int MAX_STATES = 65000;
+    final static private int MAX_STATES = 185000;
 
     SearchInformation() {
         this.isEmpty = true;
