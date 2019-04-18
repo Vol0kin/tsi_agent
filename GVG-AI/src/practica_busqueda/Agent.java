@@ -99,7 +99,7 @@ public class Agent extends BaseAgent{
         
     }
     
-     @Override
+    @Override
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         //System.out.println(elapsedTimer.remainingTimeMillis());
         
@@ -964,7 +964,8 @@ public class Agent extends BaseAgent{
 
             if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems == 0) {
                 foundGoal = true;
-            } else if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems != 0) {
+            } else if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal
+                        && remainingGems != 0 && exploredStates != 1) {
                 closedList.addFirst(currentNode);
                 continue;
             } else {
