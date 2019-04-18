@@ -213,7 +213,7 @@ public class Agent extends BaseAgent{
         
         if (it == 0){
             x_search = this.getPlayer(stateObs).getX();
-            y_search = this.getPlayer(stateObs).getY()-1;
+            y_search = this.getPlayer(stateObs).getY();
             
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
@@ -936,7 +936,8 @@ public class Agent extends BaseAgent{
 
             if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems == 0) {
                 foundGoal = true;
-            } else if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal && remainingGems != 0) {
+            } else if (currentObservation.getX() == xGoal && currentObservation.getY() == yGoal
+                        && remainingGems != 0 && exploredStates != 1) {
                 closedList.addFirst(currentNode);
                 continue;
             } else {
