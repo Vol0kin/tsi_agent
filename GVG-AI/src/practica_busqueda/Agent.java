@@ -219,10 +219,8 @@ public class Agent extends BaseAgent{
             System.out.println(clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0)));
             
             informacionPlan = pathExplorer(primera_gema.getX(), primera_gema.getY(), stateObs);
-            
-            // QUITAR GEMA DE ESE CLUSTER TRAS SER ALCANZADA Y USAR EL OTRO A* PARA COGER LAS DEMAS!    
-            
-            System.out.println();
+                     
+            System.out.println(informacionPlan.plan);
         }
         
         it++;
@@ -240,9 +238,11 @@ public class Agent extends BaseAgent{
                 
                 System.out.println("Lista de gemas a coger: " + gemas_a_coger);
                 
-                informacionPlan = pathExplorer(24, 10,
+                informacionPlan = pathExplorer(24, 11,
                                          stateObs, gemas_a_coger,
                                          elapsedTimer, 5);
+                
+                System.out.println("Plan 2: " + informacionPlan.listaCasillas);
                 
                 return Types.ACTIONS.ACTION_NIL;
             }
@@ -263,6 +263,7 @@ public class Agent extends BaseAgent{
                 // Excepción -> cuando en la casilla siguiente hay una gema y encima hay una roca, la orientación y posición del jugador
                 // no cambian (pero sí es un movimiento válido)
                 boolean hay_gema = false;
+                boolean hay_roca = false;
                 
                 if (jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
                     ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
@@ -273,7 +274,14 @@ public class Agent extends BaseAgent{
                         for (Observation obs : grid[x_jug][y_jug-1]){
                             if (obs.getType() == ObservationType.GEM)
                                 hay_gema = true;
-                        }   
+                        }
+                        
+                        if(y_jug-2 >= 0){    
+                            for (Observation obs : grid[x_jug][y_jug-2]){ // Veo si se queda quieto porque pica para tirar la roca
+                                if (obs.getType() == ObservationType.BOULDER)
+                                    hay_roca = true;
+                            }
+                        }
                     }
                     else if (jugador.getOrientation() == Orientation.S){
                         for (Observation obs : grid[x_jug][y_jug+1]){
@@ -286,17 +294,27 @@ public class Agent extends BaseAgent{
                             if (obs.getType() == ObservationType.GEM)
                                 hay_gema = true;
                         }
+                        
+                        for (Observation obs : grid[x_jug+1][y_jug-1]){
+                                if (obs.getType() == ObservationType.BOULDER)
+                                    hay_roca = true;
+                        }
                     }
                     else if (jugador.getOrientation() == Orientation.W){
                         for (Observation obs : grid[x_jug-1][y_jug]){
                             if (obs.getType() == ObservationType.GEM)
                                 hay_gema = true;
                         }
+                        
+                        for (Observation obs : grid[x_jug-1][y_jug-1]){
+                                if (obs.getType() == ObservationType.BOULDER)
+                                    hay_roca = true;
+                        }
                     }
                     
                     // Compruebo que la siguiente acción no se corresponde con un cambio de orientación
-                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL && !hay_gema){
-                        //System.out.println("Se ha chocado con una roca!");
+                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL && !hay_gema && !hay_roca){
+                        System.out.println("Se ha chocado con una roca!");
                         return Types.ACTIONS.ACTION_NIL;
                     }
                 }
@@ -865,7 +883,7 @@ public class Agent extends BaseAgent{
     private PathInformation pathExplorer(int xGoal, int yGoal,
                                          StateObservation stateObs, ArrayList<Observation> goalGems,
                                          ElapsedCpuTimer elapsedTimer, long timeThreshold){
-        return pathExplorer(this.getPlayer(stateObs), xGoal, yGoal, stateObs, goalGems, elapsedTimer, timeThreshold);
+        return pathExplorer(this.getPlayer(stateObs), xGoal, yGoal, stateObs, goalGems, elapsedTimer, timeThreshold, null, null);
     } 
     
     private PathInformation pathExplorer(PlayerObservation startingPos, int xGoal, int yGoal,
