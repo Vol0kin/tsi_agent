@@ -37,6 +37,17 @@ public class Agent extends BaseAgent{
     
     private ClusterInformation clusterInf;
     
+    // Información extra para la planificación
+    
+    private int sig_cluster_circ = 0; // Indice del siguiente clúster a coger del objetivo
+    
+    private boolean en_cluster = false; // Vale false si estamos yendo hacia el siguiente clúster y true si ya hemos llegado y estamos cogiendo sus gemas
+    
+    // Variables para guardar los parámetros del A* cuando se le llama a lo largo de varios turnos
+    private int x_search;
+    private int y_search;
+    private ArrayList<Observation> gems_search;
+    
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
         //informacionPlan = new PathInformation();
@@ -83,6 +94,9 @@ public class Agent extends BaseAgent{
         mapaCircuitos = new HashMap<ArrayList<Observation>, Integer>(); // Creo el mapa que usa getHeuristicGems
         
         clusterInf = new ClusterInformation(); // Creo la información de los clústeres
+        
+        // Información extra para la planificación
+        
     }
     
      @Override
@@ -190,59 +204,85 @@ public class Agent extends BaseAgent{
         
         PlayerObservation jugador = this.getPlayer(stateObs);
         Observation salida = this.getExit(stateObs);
+        ArrayList<Integer> circuito_prov = new ArrayList<>(); // Uso este circuito en vez del real de forma provisional
+        circuito_prov.add(0);
+        circuito_prov.add(1);
         
         if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
             
             // > ¡Elimino el clúster 5 al que no se puede llegar!
-            clusterInf.clusters.remove(5);
+            clusterInf.clusters.remove(5); // VER LO QUE PASA CUANDO NO ENCUENTRA CAMINO
             
             this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
             this.saveCircuit(clusterInf, jugador.getX(),
             jugador.getY(), salida.getX(),
             salida.getY()); // Creo el camino a través de los clústeres
             
-            // Creo los nodos del circuito -> Para un clúster, la misma gema puede ser nodo de salida y entrada!
+            // Creo los nodos del circuito
             this.saveCircuitNodes(clusterInf, jugador.getX(), jugador.getY(),
                     salida.getX(), salida.getY());
             
-            for (int i = 0, j = 0; i < clusterInf.nodos_circuito.size(); i+=2, j++){
+            /*for (int i = 0, j = 0; i < clusterInf.nodos_circuito.size(); i+=2, j++){
                 System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i)));
                 System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i+1)));
                 System.out.println();
-            }
+            }*/
             
             // Creo el camino para acercarme al primer clúster
-            Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0));
+            //Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0));
+            Observation primera_gema = clusterInf.clusters.get(circuito_prov.get(sig_cluster_circ)).getGems().get(0); // Cojo la gema 0 del primer clúster -> cambiarlo por el nodo correspondiente!
             
-            System.out.println(clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0)));
+            System.out.println(primera_gema);
             
             informacionPlan = pathExplorer(primera_gema.getX(), primera_gema.getY(), stateObs);
                      
-            System.out.println(informacionPlan.plan);
+            //System.out.println(informacionPlan.plan);
         }
         
         it++;
+        
+        // Si se el A* no ha terminado, sigue buscando y hasta entonces devuelvo ACTION_NIL
+        if (!informacionPlan.searchComplete){
+            System.out.println("Sigo con la búsqueda anterior");
+            informacionPlan = pathExplorer(x_search, y_search,
+                                         stateObs, gems_search,
+                                         elapsedTimer, 10);
+            return Types.ACTIONS.ACTION_NIL;
+        }
         
         if (informacionPlan.existsPath){
             if (informacionPlan.plan.isEmpty()){
                 System.out.println("Plan vacio");
                 
                 // Elimino las gemas ya cogidas del clúster 0 del circuito -> FUNCIONA
-                clusterInf.removeCapturedGems(clusterInf.circuito.get(0), this.getGemsList(stateObs));
+                //clusterInf.removeCapturedGems(clusterInf.circuito.get(0), this.getGemsList(stateObs));
+                clusterInf.removeCapturedGems(circuito_prov.get(0), this.getGemsList(stateObs));
 
                 // Ahora cojo las gemas restantes del clúster 0 del circuito usando el pathExplorer
-                ArrayList<Observation> gemas_a_coger = clusterInf.getGemsCircuitCluster(0);
-                Observation gem_obj = gemas_a_coger.get(clusterInf.nodos_circuito.get(1));
+                en_cluster = true;
                 
-                System.out.println("Lista de gemas a coger: " + gemas_a_coger);
+                //ArrayList<Observation> gemas_a_coger = clusterInf.getGemsCircuitCluster(0);
+                gems_search = clusterInf.clusters.get(circuito_prov.get(sig_cluster_circ)).getGems();
+                //Observation gem_obj = gemas_a_coger.get(clusterInf.nodos_circuito.get(1));
+                Observation gem_obj = gems_search.get(0); // Voy a por la gema 0 de las que quedan -> cambiarlo por el nodo correspondiente!
                 
-                informacionPlan = pathExplorer(24, 11,
-                                         stateObs, gemas_a_coger,
-                                         elapsedTimer, 5);
+                System.out.println("Lista de gemas a coger: " + gems_search);
                 
-                System.out.println("Plan 2: " + informacionPlan.listaCasillas);
+                x_search = gem_obj.getX();
+                y_search = gem_obj.getY();
+                
+                informacionPlan = pathExplorer(x_search, y_search,
+                                         stateObs, gems_search,
+                                         elapsedTimer, 2);
+                
+                if (informacionPlan.searchComplete)
+                    System.out.println("Ha terminado la búsqueda en el primer turno");
+                else
+                    System.out.println("No ha terminado la búsqueda en el primer turno");
+                
+                //System.out.println("Plan 2: " + informacionPlan.listaCasillas);
                 
                 return Types.ACTIONS.ACTION_NIL;
             }
@@ -255,8 +295,11 @@ public class Agent extends BaseAgent{
                 
                 PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado);
                 
-                if (jugador_sig_estado.hasDied())
+                // SI VA A MORIR AÑADIR TAMBIÉN LO DEL MOVIMIENTO HACIA DERECHA, IZQUIERDA O ABAJO!!
+                if (jugador_sig_estado.hasDied()){
                     System.out.println("Va a morir!"); // Funciona con las rocas. Con los enemigos no, al ser estocástico
+                    System.out.println(accion);
+                }
                 
                 // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo -> FUNCIONA
                 // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
@@ -265,7 +308,8 @@ public class Agent extends BaseAgent{
                 boolean hay_gema = false;
                 boolean hay_roca = false;
                 
-                if (jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
+                // Si el jugador del siguiente estado ha muerto, la orientación ha cambiado!!!
+                if (!jugador_sig_estado.hasDied() && jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
                     ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
                     int x_jug = jugador.getX();
                     int y_jug = jugador.getY();
@@ -315,6 +359,37 @@ public class Agent extends BaseAgent{
                     // Compruebo que la siguiente acción no se corresponde con un cambio de orientación
                     if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL && !hay_gema && !hay_roca){
                         System.out.println("Se ha chocado con una roca!");
+                        
+                        /* // SI VA A MORIR, YA SE HABRIA ACTIVADO EL HASDIED ANTERIOR!!
+                        // Si va a morir, se mueve a la derecha, izquierda o abajo para no morir
+                        StateObservation estado_futuro = stateObs.copy();
+                        estado_futuro.advance(Types.ACTIONS.ACTION_NIL);
+                        
+                        if (this.getPlayer(estado_futuro).hasDied()){
+                            System.out.println("Si se queda quieto moriría");
+                            
+                            // Pruebo a moverme a la derecha
+                            estado_futuro = stateObs.copy();
+                            estado_futuro.advance(Types.ACTIONS.ACTION_RIGHT);
+                            
+                            if (!this.getPlayer(estado_futuro).hasDied()){
+                                return Types.ACTIONS.ACTION_RIGHT;
+                            }
+                            
+                            // Pruebo a moverme a la izquierda
+                            estado_futuro = stateObs.copy();
+                            estado_futuro.advance(Types.ACTIONS.ACTION_LEFT);
+                            
+                            if (!this.getPlayer(estado_futuro).hasDied()){
+                                return Types.ACTIONS.ACTION_LEFT;
+                            }
+                            
+                            // Si no queda otra opción, me muevo hacia abajo
+                            return Types.ACTIONS.ACTION_DOWN;
+                        }
+                        */
+                        // AÑADIR LA REPLANIFICACION!!!! (y posteriormente tener en cuenta los enemigos)
+
                         return Types.ACTIONS.ACTION_NIL;
                     }
                 }
