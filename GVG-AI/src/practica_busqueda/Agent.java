@@ -208,7 +208,13 @@ public class Agent extends BaseAgent{
         circuito_prov.add(0);
         circuito_prov.add(1);
         
-        if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
+        
+        // PRUEBO A VER LO QUE TARDA SIN ACERCARME
+        
+        if (it == 0){
+            x_search = this.getPlayer(stateObs).getX();
+            y_search = this.getPlayer(stateObs).getY()-1;
+            
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
             
@@ -220,190 +226,36 @@ public class Agent extends BaseAgent{
             jugador.getY(), salida.getX(),
             salida.getY()); // Creo el camino a través de los clústeres
             
-            // Creo los nodos del circuito
-            this.saveCircuitNodes(clusterInf, jugador.getX(), jugador.getY(),
-                    salida.getX(), salida.getY());
+            gems_search = clusterInf.clusters.get(0).getGems();
+                    
+            informacionPlan = pathExplorer(x_search, y_search,
+                                         stateObs, gems_search,
+                                         elapsedTimer, 0);
             
-            /*for (int i = 0, j = 0; i < clusterInf.nodos_circuito.size(); i+=2, j++){
-                System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i)));
-                System.out.println(clusterInf.getGemsCircuitCluster(j).get(clusterInf.nodos_circuito.get(i+1)));
-                System.out.println();
-            }*/
+            it++;
+            return Types.ACTIONS.ACTION_NIL;
+        }
+        
+        informacionPlan = pathExplorer(x_search, y_search,
+                                         stateObs, gems_search,
+                                         elapsedTimer, 0);
+        
+        if (informacionPlan.searchComplete){
+            System.out.println("Camino encontrado - it=" + it);
+            System.out.println(informacionPlan.plan);
             
-            // Creo el camino para acercarme al primer clúster
-            //Observation primera_gema = clusterInf.getGemsCircuitCluster(0).get(clusterInf.nodos_circuito.get(0));
-            Observation primera_gema = clusterInf.clusters.get(circuito_prov.get(sig_cluster_circ)).getGems().get(0); // Cojo la gema 0 del primer clúster -> cambiarlo por el nodo correspondiente!
+            if (informacionPlan.plan.isEmpty())
+                return Types.ACTIONS.ACTION_NIL;
+            else{
+                return informacionPlan.plan.pollFirst();
+            }
             
-            System.out.println(primera_gema);
             
-            informacionPlan = pathExplorer(primera_gema.getX(), primera_gema.getY(), stateObs);
-                     
-            //System.out.println(informacionPlan.plan);
         }
         
         it++;
+        return Types.ACTIONS.ACTION_NIL;
         
-        // Si se el A* no ha terminado, sigue buscando y hasta entonces devuelvo ACTION_NIL
-        if (!informacionPlan.searchComplete){
-            System.out.println("Sigo con la búsqueda anterior");
-            informacionPlan = pathExplorer(x_search, y_search,
-                                         stateObs, gems_search,
-                                         elapsedTimer, 10);
-            return Types.ACTIONS.ACTION_NIL;
-        }
-        
-        if (informacionPlan.existsPath){
-            if (informacionPlan.plan.isEmpty()){
-                System.out.println("Plan vacio");
-                
-                // Elimino las gemas ya cogidas del clúster 0 del circuito -> FUNCIONA
-                //clusterInf.removeCapturedGems(clusterInf.circuito.get(0), this.getGemsList(stateObs));
-                clusterInf.removeCapturedGems(circuito_prov.get(0), this.getGemsList(stateObs));
-
-                // Ahora cojo las gemas restantes del clúster 0 del circuito usando el pathExplorer
-                en_cluster = true;
-                
-                //ArrayList<Observation> gemas_a_coger = clusterInf.getGemsCircuitCluster(0);
-                gems_search = clusterInf.clusters.get(circuito_prov.get(sig_cluster_circ)).getGems();
-                //Observation gem_obj = gemas_a_coger.get(clusterInf.nodos_circuito.get(1));
-                Observation gem_obj = gems_search.get(0); // Voy a por la gema 0 de las que quedan -> cambiarlo por el nodo correspondiente!
-                
-                System.out.println("Lista de gemas a coger: " + gems_search);
-                
-                x_search = gem_obj.getX();
-                y_search = gem_obj.getY();
-                
-                informacionPlan = pathExplorer(x_search, y_search,
-                                         stateObs, gems_search,
-                                         elapsedTimer, 2);
-                
-                if (informacionPlan.searchComplete)
-                    System.out.println("Ha terminado la búsqueda en el primer turno");
-                else
-                    System.out.println("No ha terminado la búsqueda en el primer turno");
-                
-                //System.out.println("Plan 2: " + informacionPlan.listaCasillas);
-                
-                return Types.ACTIONS.ACTION_NIL;
-            }
-            else{
-                Types.ACTIONS accion = informacionPlan.plan.peekFirst(); // No borro la acción por si no se ejecuta
-                
-                // Veo si la acción que tengo que hacer va a hacer que muera el jugador
-                StateObservation estado_avanzado = stateObs.copy();
-                estado_avanzado.advance(accion);
-                
-                PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado);
-                
-                // SI VA A MORIR AÑADIR TAMBIÉN LO DEL MOVIMIENTO HACIA DERECHA, IZQUIERDA O ABAJO!!
-                if (jugador_sig_estado.hasDied()){
-                    System.out.println("Va a morir!"); // Funciona con las rocas. Con los enemigos no, al ser estocástico
-                    System.out.println(accion);
-                }
-                
-                // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo -> FUNCIONA
-                // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
-                // Excepción -> cuando en la casilla siguiente hay una gema y encima hay una roca, la orientación y posición del jugador
-                // no cambian (pero sí es un movimiento válido)
-                boolean hay_gema = false;
-                boolean hay_roca = false;
-                
-                // Si el jugador del siguiente estado ha muerto, la orientación ha cambiado!!!
-                if (!jugador_sig_estado.hasDied() && jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY()){
-                    ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
-                    int x_jug = jugador.getX();
-                    int y_jug = jugador.getY();
-                    
-                    if (jugador.getOrientation() == Orientation.N){
-                        for (Observation obs : grid[x_jug][y_jug-1]){
-                            if (obs.getType() == ObservationType.GEM)
-                                hay_gema = true;
-                        }
-                        
-                        if(y_jug-2 >= 0){    
-                            for (Observation obs : grid[x_jug][y_jug-2]){ // Veo si se queda quieto porque pica para tirar la roca
-                                if (obs.getType() == ObservationType.BOULDER)
-                                    hay_roca = true;
-                            }
-                        }
-                    }
-                    else if (jugador.getOrientation() == Orientation.S){
-                        for (Observation obs : grid[x_jug][y_jug+1]){
-                            if (obs.getType() == ObservationType.GEM)
-                                hay_gema = true;
-                        }
-                    }
-                    else if (jugador.getOrientation() == Orientation.E){
-                        for (Observation obs : grid[x_jug+1][y_jug]){
-                            if (obs.getType() == ObservationType.GEM)
-                                hay_gema = true;
-                        }
-                        
-                        for (Observation obs : grid[x_jug+1][y_jug-1]){
-                                if (obs.getType() == ObservationType.BOULDER)
-                                    hay_roca = true;
-                        }
-                    }
-                    else if (jugador.getOrientation() == Orientation.W){
-                        for (Observation obs : grid[x_jug-1][y_jug]){
-                            if (obs.getType() == ObservationType.GEM)
-                                hay_gema = true;
-                        }
-                        
-                        for (Observation obs : grid[x_jug-1][y_jug-1]){
-                                if (obs.getType() == ObservationType.BOULDER)
-                                    hay_roca = true;
-                        }
-                    }
-                    
-                    // Compruebo que la siguiente acción no se corresponde con un cambio de orientación
-                    if (jugador.getOrientation() == jugador_sig_estado.getOrientation() && accion != Types.ACTIONS.ACTION_NIL && !hay_gema && !hay_roca){
-                        System.out.println("Se ha chocado con una roca!");
-                        
-                        /* // SI VA A MORIR, YA SE HABRIA ACTIVADO EL HASDIED ANTERIOR!!
-                        // Si va a morir, se mueve a la derecha, izquierda o abajo para no morir
-                        StateObservation estado_futuro = stateObs.copy();
-                        estado_futuro.advance(Types.ACTIONS.ACTION_NIL);
-                        
-                        if (this.getPlayer(estado_futuro).hasDied()){
-                            System.out.println("Si se queda quieto moriría");
-                            
-                            // Pruebo a moverme a la derecha
-                            estado_futuro = stateObs.copy();
-                            estado_futuro.advance(Types.ACTIONS.ACTION_RIGHT);
-                            
-                            if (!this.getPlayer(estado_futuro).hasDied()){
-                                return Types.ACTIONS.ACTION_RIGHT;
-                            }
-                            
-                            // Pruebo a moverme a la izquierda
-                            estado_futuro = stateObs.copy();
-                            estado_futuro.advance(Types.ACTIONS.ACTION_LEFT);
-                            
-                            if (!this.getPlayer(estado_futuro).hasDied()){
-                                return Types.ACTIONS.ACTION_LEFT;
-                            }
-                            
-                            // Si no queda otra opción, me muevo hacia abajo
-                            return Types.ACTIONS.ACTION_DOWN;
-                        }
-                        */
-                        // AÑADIR LA REPLANIFICACION!!!! (y posteriormente tener en cuenta los enemigos)
-
-                        return Types.ACTIONS.ACTION_NIL;
-                    }
-                }
-                
-                informacionPlan.plan.removeFirst(); // Como voy a ejecutar la acción, la quito
-                
-                //System.out.println(accion);
-                return accion;
-            }
-        }
-        else{
-            return Types.ACTIONS.ACTION_NIL;
-        }
-
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -1942,5 +1794,28 @@ public class Agent extends BaseAgent{
         }
         
         clust_inf.nodos_circuito.add(new Integer(ind_min));
+    }
+    
+    // Este método transforma el plan dado por el A* sencillo para ir a la gema que funciona como nodo de entrada
+    // del siguiente clúster y devuelve el mismo plan pero solo con las acciones antes de mover una roca.
+    // Es decir, si la acción i mueve una roca, devuelve el plan con las acciones [0, i-1]
+    // x_ini, y_ini -> posición desde donde se empezará a aplicar el plan
+    
+    private LinkedList<Types.ACTIONS> prunePlan(StateObservation stateObs, LinkedList<Types.ACTIONS> plan_inicial, int x_ini, int y_ini, Orientation or_ini){
+        LinkedList<Types.ACTIONS> plan_podado;
+        int x_act = x_ini;
+        int y_act = y_ini;
+        Orientation or_act = or_ini;
+        Types.ACTIONS sig_acc;
+        int num_acciones = plan_inicial.size();
+        int i;
+        
+        for (i = 0; i < num_acciones; i++){ // Recorro el plan hasta que encuentre una acción que mueva una roca
+            sig_acc = plan_inicial.get(i);
+            
+        }
+         
+        
+        return plan_inicial;
     }
 }
