@@ -27,7 +27,7 @@ public interface UtilAlgorithms {
     }
 
     static void simulateBoulderFall(ArrayList<Observation> boulders, boolean[][] boulderMap, boolean[][] groundMap,
-                                    ArrayList<Observation>[][] grid) {
+                                    boolean[][] gemsMap, ArrayList<Observation>[][] grid) {
         ArrayList<Observation> fallingBoulders = findFallingBoulders(boulders, grid);
 
 
@@ -46,7 +46,8 @@ public interface UtilAlgorithms {
             }
 
             // Find out the index of the last empty space
-            while (!groundMap[x][emptyPos] && !grid[x][emptyPos].get(0).getType().equals(ObservationType.WALL)) {
+            while (!groundMap[x][emptyPos] &&
+                    (!grid[x][emptyPos].get(0).getType().equals(ObservationType.WALL) && !gemsMap[x][emptyPos] && !boulderMap[x][emptyPos])) {
                 emptyPos++;
             }
 

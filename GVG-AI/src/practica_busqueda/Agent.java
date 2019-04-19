@@ -294,7 +294,7 @@ public class Agent extends BaseAgent{
         
         // Para ver si va a morir ver los dos turnos siguientes por si tiene que girar y por los enemigos!!
         if (jugador_sig_estado.hasDied()){ // Va a morir el siguiente turno
-            System.out.println("Va a morir! - it: " + it); // Funciona con las rocas. Con los enemigos no, al ser estocástico
+            //System.out.println("Va a morir! - it: " + it); // Funciona con las rocas. Con los enemigos no, al ser estocástico
             System.out.println(accion);
         }
         else if (accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
@@ -759,16 +759,16 @@ public class Agent extends BaseAgent{
             groundMap = initialGroundMap;
         }
 
-        // Simulate initial boulder fall
-        UtilAlgorithms.simulateBoulderFall(boulders, boulderMap, groundMap, grid);
-
-        boulderConfigurations.add(boulderMap);
-
         // Gems map
         boolean[][] gemsMap = new boolean[XMAX][YMAX];
         ArrayList<Observation> gemsList = this.getGemsList(stateObs);
 
         UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
+
+        // Simulate initial boulder fall
+        UtilAlgorithms.simulateBoulderFall(boulders, boulderMap, groundMap, gemsMap, grid);
+
+        boulderConfigurations.add(boulderMap);
 
         // Add first node
         openList.add(new GridNode(0, this.getHeuristicDistance(startingPos, goal),
@@ -870,9 +870,15 @@ public class Agent extends BaseAgent{
                             // and the agent has mined or if the agent has mined another grid
                             // and hasn't changed its position and the previous grid had forbidden
                             // that movement
-                            if ((i == 0) || (nextPosition.equals(currentNode.getPosition()) && currentNode.getForbiAboveGrid())) {
+                            if ((i == 0) || (nextPosition.getX() == currentNode.getPosition().getX() && currentNode.getForbiAboveGrid())) {
                                 forbidAboveGrid = true;
                             }
+                        }
+
+                        // Check if the agent is trying to go to the above grid without changing its X position
+                        // after moving a boulder above him
+                        if ((nextPosition.getX() == currentNode.getPosition().getX() && currentNode.getForbiAboveGrid())) {
+                            forbidAboveGrid = true;
                         }
 
                         // Create new grid node
@@ -988,17 +994,16 @@ public class Agent extends BaseAgent{
                 groundMap = initialGroundMap;
             }
 
-            // Simulate initial boulder fall
-            UtilAlgorithms.simulateBoulderFall(boulders, boulderMap, groundMap, grid);
-
-            boulderConfigurations.add(boulderMap);
-
-
             // Gems map
             boolean[][] gemsMap = new boolean[XMAX][YMAX];
             ArrayList<Observation> gemsList = this.getGemsList(stateObs);
 
             UtilAlgorithms.initMap(gemsMap, gemsList, XMAX, YMAX);
+
+            // Simulate initial boulder fall
+            UtilAlgorithms.simulateBoulderFall(boulders, boulderMap, groundMap, gemsMap, grid);
+
+            boulderConfigurations.add(boulderMap);
 
             // Add first node
             openList.add(new GridNode(0, this.getHeuristicDistance(startingPos, goal),
@@ -1113,7 +1118,7 @@ public class Agent extends BaseAgent{
                             }
 
                             // Find out the index of the last empty space
-                            while (!nextGround[x][emptyPos] && !grid[x][emptyPos].get(0).getType().equals(WALL)) {
+                            while (!nextGround[x][emptyPos] && (!grid[x][emptyPos].get(0).getType().equals(WALL) && !nextGemsMap[x][emptyPos] && !currentBoulders[x][emptyPos])) {
                                 emptyPos++;
                             }
 
@@ -1137,7 +1142,7 @@ public class Agent extends BaseAgent{
                             // and the agent has mined or if the agent has mined another grid
                             // and hasn't changed its position and the previous grid had forbidden
                             // that movement
-                            if ((i == 0) || (nextPosition.equals(currentNode.getPosition()) && currentNode.getForbiAboveGrid())) {
+                            if ((i == 0) || (nextPosition.getX() == currentNode.getPosition().getX() && currentNode.getForbiAboveGrid())) {
                                 forbidAboveGrid = true;
                             }
 
@@ -1150,6 +1155,12 @@ public class Agent extends BaseAgent{
                             heuristic = this.getHeuristicGems(nextPosition, goal, nextGemsList);
                         } else {
                             heuristic = this.getHeuristicDistance(nextPosition, goal);
+                        }
+
+                        // Check if the agent is trying to go to the above grid without changing its X position
+                        // after moving a boulder above him
+                        if ((nextPosition.getX() == currentNode.getPosition().getX() && currentNode.getForbiAboveGrid())) {
+                            forbidAboveGrid = true;
                         }
 
                         // Create new grid node
