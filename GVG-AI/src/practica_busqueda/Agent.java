@@ -48,6 +48,11 @@ public class Agent extends BaseAgent{
     private int y_search;
     private ArrayList<Observation> gems_search;
     
+    private LinkedList<Types.ACTIONS> plan_no_morir; // Plan para guardar las acciones a ejecutar para evitar morir -> si no está vacío siempre se ejecutan sus acciones
+    private boolean hay_que_replanificar = false; // Vale true cuando se ha ejecutando/está ejecutando el plan_no_morir -> cuando se haya terminado de ejecutar ese plan, se replanifica con el clúster actual (si tiene gemas)
+    
+    private boolean abandonando_nivel = false; // Vale true cuando se esté ejecutando el plan para salir del nivel, tras conseguir 9 gemas o más
+    
     // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
@@ -76,6 +81,7 @@ public class Agent extends BaseAgent{
         stop = false;
         searchInfo = new SearchInformation();
         
+        plan_no_morir = new LinkedList<>();
         
         //PlayerObservation jugador = this.getPlayer(so);
         
@@ -239,41 +245,101 @@ public class Agent extends BaseAgent{
             informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
                                          elapsedTimer, 2);
-            
-            if (informacionPlan.searchComplete) // Veo si ha terminado la planificación en el mismo turno
-                sig_cluster++; // Si ya ha terminado la búsqueda, el siguiente clúster será el 1 
         }
-
-        if (it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
+        
+        
+        if (!plan_no_morir.isEmpty()){ // Si tengo acciones del plan para no morir, las ejecuto y termino el act
+            it++;
+            System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
+            return plan_no_morir.pollFirst();
+        }
+        
+        
+        // Si tengo 9 gemas, planifico para abandonar el nivel
+        if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT && !abandonando_nivel){
+            System.out.println("Voy a abandonar el nivel");
+            abandonando_nivel = true;
+            
+            Observation level_exit = this.getExit(stateObs);
+            x_search = level_exit.getX();
+            y_search = level_exit.getY();
+            
+            informacionPlan = pathExplorer(x_search, y_search, stateObs);
+            System.out.println("Plan: " + informacionPlan.plan);
+            
+            informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+        }
+        
+        
+        if (!hay_que_replanificar && it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
             informacionPlan = pathExplorer(x_search, y_search,
                     stateObs, gems_search,
                     elapsedTimer, 2);
-            
-            if (informacionPlan.searchComplete)
-                sig_cluster++; // Si acaba de terminar la búsqueda, la siguiente vez busco el siguiente clúster del circuito
         }
 
+        // Tengo que replanificar
+        // Veo si quedan gemas en el clúster actual y si es así cojo las que quedan
+        // Si no quedan gemas, me voy al punto intermedio entre este clúster y el siguiente
+        // Si tengo 9 gemas me voy a la salida
+        if (hay_que_replanificar){
+            hay_que_replanificar = false;
+            
+            if (abandonando_nivel){ // Veo si tengo que planificar para abandonar el nivel
+                Observation salida_nivel = this.getExit(stateObs);
+                
+                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs);
+                informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+            }
+            
+            else{ // Planifico para coger las gemas del clúster o ir al punto intermedio con el siguiente
+                // Veo si quedan gemas en el clúster
+                Cluster this_cluster = clusterInf.clusters.get(circuito_prov.get(sig_cluster));
+                this_cluster.removeCapturedGems(this.getGemsList(stateObs));
+
+                if (this_cluster.getNumGems() > 0){ // Todavía le quedan gemas
+                    gems_search = this_cluster.getGems();
+
+                    informacionPlan = pathExplorer(x_search, y_search,
+                                             stateObs, gems_search,
+                                             elapsedTimer, 2);
+
+                    if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
+                        accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
+                    }
+                    else{             
+                        accion = Types.ACTIONS.ACTION_NIL;
+                    }
+                }
+                else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
+                    x_search = 14; // CAMBIARLO CUANDO META EL CIRCUITO!
+                    y_search = 5;
+
+                    informacionPlan = pathExplorer(x_search, y_search, stateObs);
+
+                    informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+                }
+            }
+        }
+        
         
         if (informacionPlan.searchComplete){ // Si ya ha encontrado camino, se ejecuta
             //System.out.println("Camino encontrado - it=" + it);
             //System.out.println(informacionPlan.plan);
-            
-            
-            
+
             if (informacionPlan.plan.isEmpty()) { // Si he acabado de ejecutar el plan, planifico para el clúster siguiente
                 System.out.println("Plan vacío");
+                sig_cluster++;
                 gems_search = clusterInf.clusters.get(circuito_prov.get(sig_cluster)).getGems();
                 x_search = 14;
                 y_search = 5;
                 
-                System.out.println(gems_search);
+                //System.out.println(gems_search);
                 
                 informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
                                          elapsedTimer, 2);
                 
                 if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
-                    sig_cluster++;
                     accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
                 }
                 else{             
@@ -285,20 +351,224 @@ public class Agent extends BaseAgent{
             }
         }
         
-        // <Parte reactiva>
+        // <<Parte reactiva>>
         // Ya he elegido la acción. Ahora veo si se puede ejecutar
      
         StateObservation estado_avanzado = stateObs.copy();
-        estado_avanzado.advance(accion); // Siguiente estado del juego     
+        estado_avanzado.advance(informacionPlan.plan.peekFirst()); // Siguiente estado del juego (en el siguiente turno)  
         PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado); // Jugador el siguiente turno
         
-        // Para ver si va a morir ver los dos turnos siguientes por si tiene que girar y por los enemigos!!
-        if (jugador_sig_estado.hasDied()){ // Va a morir el siguiente turno
-            System.out.println("Va a morir! - it: " + it); // Funciona con las rocas. Con los enemigos no, al ser estocástico
-            System.out.println(accion);
+        if (informacionPlan.plan.size() >= 2)
+            estado_avanzado.advance(informacionPlan.plan.get(1)); // Estado del juego dentro de dos turnos
+        
+        PlayerObservation jugador_sig2_estado = this.getPlayer(estado_avanzado); // Jugador dentro de 2 turnos o dentro de 1 si el plan solo tiene una acción
+        
+        
+        // <Ver si muere>
+        // Veo si el jugador va a morir en los siguientes 2 turnos
+        
+        // BUG: Si el jugador abandona el nivel es como si hubiera muerto!!! (su "x" también vale -1)
+        boolean bug_morir = false;
+        
+        if (jugador.getManhattanDistance(this.getExit(stateObs)) <= 1)
+            bug_morir = true;
+        
+        else if (!jugador_sig_estado.hasDied() && jugador_sig2_estado.hasDied()){
+            if (jugador_sig_estado.getManhattanDistance(this.getExit(stateObs)) <= 1)
+                bug_morir = true;
         }
-        else if (accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
+        
+        if (!bug_morir && (jugador_sig_estado.hasDied() || jugador_sig2_estado.hasDied()) ){ // TENER EN CUENTA QUE LOS ENEMIGOS SON ESTOCÁSTICOS!!
+            System.out.println("Va a morir! - it: " + it);
+            System.out.println(accion);
             
+            // Si va a morir ejecuto las acciones necesarias para sobrevivir y después vuelvo a la casilla donde estaba y sigo ejecutando el plan
+            
+            // Veo si va a morir debido a una roca y no por un enemigo
+            int jug_x = jugador.getX();
+            int jug_y = jugador.getY();
+            Orientation jug_orient = jugador.getOrientation();
+            ArrayList<Observation> [][] grid = this.getObservationGrid(stateObs);
+            boolean muerte_por_roca = false;
+            boolean roca_derecha = false;
+            boolean roca_arriba = false;
+            boolean roca_izquierda = false;
+            
+            if (    grid[jug_x+1][jug_y].get(0).getType() == ObservationType.BOULDER ||
+                    grid[jug_x+1][jug_y-1].get(0).getType() == ObservationType.BOULDER){ // Hay roca a la derecha
+                    
+                    roca_derecha = true;
+                    
+                    if (informacionPlan.plan.peekFirst() == Types.ACTIONS.ACTION_RIGHT)
+                        muerte_por_roca = true;
+                
+            }
+            if (    grid[jug_x-1][jug_y].get(0).getType() == ObservationType.BOULDER ||
+                    grid[jug_x-1][jug_y-1].get(0).getType() == ObservationType.BOULDER){ // Hay roca a la izquierda
+                    
+                    roca_izquierda = true;
+                    
+                    if (informacionPlan.plan.peekFirst() == Types.ACTIONS.ACTION_LEFT)
+                        muerte_por_roca = true;
+                
+            }
+            if (    grid[jug_x][jug_y].get(0).getType() == ObservationType.BOULDER ||
+                    grid[jug_x][jug_y-1].get(0).getType() == ObservationType.BOULDER){ // Hay roca arriba
+                    
+                    roca_arriba = true;
+                    
+                    if (informacionPlan.plan.peekFirst() == Types.ACTIONS.ACTION_UP)
+                        muerte_por_roca = true;
+                
+            }
+            
+            
+            if (muerte_por_roca){ // Me pongo a salvo en una posición donde no vaya a morir por una roca
+                StateObservation estado_prueba;
+                plan_no_morir = new LinkedList<>(); // VER QUÉ PASA SI VOY A MORIR Y YA ESTOY EJECUTANDO EL PLAN AUXILIAR
+                boolean va_a_morir;
+                
+                // Pruebo primero a quedarme quieto si no me está cayendo una roca encima
+                if (!roca_arriba){
+                    va_a_morir = false;
+                    
+                    // Compruebo si al ejecutar ACTION_NIL los dos siguientes turnos el jugador muere o no
+                    estado_prueba = stateObs.copy();
+                    estado_prueba.advance(Types.ACTIONS.ACTION_NIL);
+                    
+                    if (this.getPlayer(estado_prueba).hasDied())
+                        va_a_morir = true;
+                    else{
+                        estado_prueba.advance(Types.ACTIONS.ACTION_NIL);
+                        
+                        if (this.getPlayer(estado_prueba).hasDied())
+                            va_a_morir = true;
+                    }
+                    
+                    if (!va_a_morir){ // Si no muere, añado esas acciones al plan
+                        plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
+                        plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
+                        System.out.println("Me quedo quieto");
+                    }
+                }
+                
+                // Si no puedo quedarme quieto, pruebo a moverme a la izquierda
+                if (plan_no_morir.isEmpty() && !roca_izquierda){
+                    va_a_morir = false;
+                    
+                    if (jug_orient == Orientation.W){ // No tengo que girar
+                        // Ejecuto ACTION_LEFT y ACTION_NIL y veo si muero
+                        estado_prueba = stateObs.copy();
+                        estado_prueba.advance(Types.ACTIONS.ACTION_LEFT);
+
+                        if (this.getPlayer(estado_prueba).hasDied())
+                            va_a_morir = true;
+                        else{
+                            estado_prueba.advance(Types.ACTIONS.ACTION_NIL);
+
+                            if (this.getPlayer(estado_prueba).hasDied())
+                                va_a_morir = true;
+                        }
+                        
+                        if (!va_a_morir){ // Si no muere, añado esas acciones al plan
+                            plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
+                            plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
+                            System.out.println("Me muevo hacia la izquierda");
+                        }
+                    }
+                    else{ // Primero giro a la izquierda y después me muevo
+                        // Ejecuto ACTION_LEFT y ACTION_LEFT y veo si muero
+                        estado_prueba = stateObs.copy();
+                        estado_prueba.advance(Types.ACTIONS.ACTION_LEFT);
+
+                        if (this.getPlayer(estado_prueba).hasDied())
+                            va_a_morir = true;
+                        else{
+                            estado_prueba.advance(Types.ACTIONS.ACTION_LEFT);
+
+                            if (this.getPlayer(estado_prueba).hasDied())
+                                va_a_morir = true;
+                        }
+                        
+                        if (!va_a_morir){ // Si no muere, añado esas acciones al plan
+                            plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
+                            plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
+                            System.out.println("Me muevo hacia la izquierda");
+                        }
+                    }   
+                }
+                
+                // Si no ha funcionado, pruebo a moverme a la derecha
+                if (plan_no_morir.isEmpty() && !roca_derecha){
+                    va_a_morir = false;
+                    
+                    if (jug_orient == Orientation.E){ // No tengo que girar
+                        // Ejecuto ACTION_RIGHT y ACTION_NIL y veo si muero
+                        estado_prueba = stateObs.copy();
+                        estado_prueba.advance(Types.ACTIONS.ACTION_RIGHT);
+
+                        if (this.getPlayer(estado_prueba).hasDied())
+                            va_a_morir = true;
+                        else{
+                            estado_prueba.advance(Types.ACTIONS.ACTION_NIL);
+
+                            if (this.getPlayer(estado_prueba).hasDied())
+                                va_a_morir = true;
+                        }
+                        
+                        if (!va_a_morir){ // Si no muere, añado esas acciones al plan
+                            plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
+                            plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
+                            System.out.println("Me muevo hacia la derecha");
+                        }
+                    }
+                    else{ // Primero giro a la izquierda y después me muevo
+                        // Ejecuto ACTION_RIGHT y ACTION_RIGHT y veo si muero
+                        estado_prueba = stateObs.copy();
+                        estado_prueba.advance(Types.ACTIONS.ACTION_RIGHT);
+
+                        if (this.getPlayer(estado_prueba).hasDied())
+                            va_a_morir = true;
+                        else{
+                            estado_prueba.advance(Types.ACTIONS.ACTION_RIGHT);
+
+                            if (this.getPlayer(estado_prueba).hasDied())
+                                va_a_morir = true;
+                        }
+                        
+                        if (!va_a_morir){ // Si no muere, añado esas acciones al plan
+                            plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
+                            plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
+                            System.out.println("Me muevo hacia la derecha");
+                        }
+                    }   
+                }
+                
+                // Por último, si no ha funcionado nada, me muevo hacia abajo
+                if (plan_no_morir.isEmpty()){
+                    System.out.println("Me muevo hacia abajo");
+                    
+                    estado_prueba = stateObs.copy();
+                    estado_prueba.advance(Types.ACTIONS.ACTION_DOWN);
+                    estado_prueba.advance(Types.ACTIONS.ACTION_DOWN);
+                    plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);
+                    
+                    if (!this.getPlayer(estado_prueba).hasDied()) // Añado otra acción si no ha muerto con el segundo ACTION_DOWN
+                        plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);
+                }
+            }
+            else{
+                // ------ TODO: comportamiento reactivo si va a morir por un enemigo 
+            }
+
+            hay_que_replanificar = true; // Cuando termine de ejecutar este plan, tendré que replanificar
+            System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
+            it++;
+            return plan_no_morir.pollFirst();
+        }
+        else if (!bug_morir && accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
+            
+            // <Choque con rocas>
             // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo
             // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
             // Excepción -> cuando en la casilla siguiente hay una gema o tierra y encima hay una roca, la orientación y posición del jugador
