@@ -48,6 +48,7 @@ public class Agent extends BaseAgent{
     private int y_search;
     private ArrayList<Observation> gems_search;
     
+    // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
         //informacionPlan = new PathInformation();
@@ -97,6 +98,8 @@ public class Agent extends BaseAgent{
         
         // Información extra para la planificación
         
+        
+        //informacionPlan = this.pathExplorer(14, 5, so);
     }
     
     @Override
@@ -205,15 +208,13 @@ public class Agent extends BaseAgent{
         PlayerObservation jugador = this.getPlayer(stateObs);
         Observation salida = this.getExit(stateObs);
         ArrayList<Integer> circuito_prov = new ArrayList<>(); // Uso este circuito en vez del real de forma provisional
+        Types.ACTIONS accion = Types.ACTIONS.ACTION_NIL; // Acción que se va a ejecutar este turno
         circuito_prov.add(0);
         circuito_prov.add(1);
-        //circuito_prov.add(1);
+        //circuito_prov.add(4);
         
-        if (it == 0){ // Primera iteración -> planifico para acercarme al primer clúster
-            //x_search = this.getPlayer(stateObs).getX();
-            //y_search = this.getPlayer(stateObs).getY()-1;
-            
-
+        // Primera iteración
+        if (it == 0){ // planifico para acercarme al primer clúster
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
             
@@ -232,7 +233,9 @@ public class Agent extends BaseAgent{
             
             x_search = casilla_search[0];
             y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-                    
+            
+            System.out.println(x_search + " " + y_search);
+            
             informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
                                          elapsedTimer, 2);
@@ -252,7 +255,7 @@ public class Agent extends BaseAgent{
 
         
         if (informacionPlan.searchComplete){ // Si ya ha encontrado camino, se ejecuta
-            System.out.println("Camino encontrado - it=" + it);
+            //System.out.println("Camino encontrado - it=" + it);
             //System.out.println(informacionPlan.plan);
             
             
@@ -271,22 +274,94 @@ public class Agent extends BaseAgent{
                 
                 if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                     sig_cluster++;
-                    return informacionPlan.plan.pollFirst();
+                    accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
                 }
                 else{             
-                    it ++;
-                    return Types.ACTIONS.ACTION_NIL;
+                    accion = Types.ACTIONS.ACTION_NIL;
                 }
 
             } else{
-                it++;
-                return informacionPlan.plan.pollFirst();
+                accion = informacionPlan.plan.peekFirst();
             }
         }
         
-        it++;
-        return Types.ACTIONS.ACTION_NIL;
+        // <Parte reactiva>
+        // Ya he elegido la acción. Ahora veo si se puede ejecutar
+     
+        StateObservation estado_avanzado = stateObs.copy();
+        estado_avanzado.advance(accion); // Siguiente estado del juego     
+        PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado); // Jugador el siguiente turno
         
+        // Para ver si va a morir ver los dos turnos siguientes por si tiene que girar y por los enemigos!!
+        if (jugador_sig_estado.hasDied()){ // Va a morir el siguiente turno
+            System.out.println("Va a morir! - it: " + it); // Funciona con las rocas. Con los enemigos no, al ser estocástico
+            System.out.println(accion);
+        }
+        else if (accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
+            
+            // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo
+            // En ese caso, se queda quieto y la acción que iba a realizar la ejecuta el siguiente turno (si no vuelve a pasar esto)
+            // Excepción -> cuando en la casilla siguiente hay una gema o tierra y encima hay una roca, la orientación y posición del jugador
+            // no cambian (pero sí es un movimiento válido) (excava la casilla de abajo de la roca / coge la gema)
+            boolean hay_gema_o_tierra = false;
+            boolean hay_roca = false;
+            
+            if (jugador_sig_estado.getX() == jugador.getX() && jugador_sig_estado.getY() == jugador.getY() &&
+                    jugador_sig_estado.getOrientation() == jugador.getOrientation()){
+                
+                ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+                int x_jug = jugador.getX();
+                int y_jug = jugador.getY();
+                    
+                if (jugador.getOrientation() == Orientation.N){
+                    for (Observation obs : grid[x_jug][y_jug-1]){
+                        if (obs.getType() == ObservationType.GEM || obs.getType() == ObservationType.GROUND)
+                            hay_gema_o_tierra = true;
+                    }
+                        
+                    if(y_jug-2 >= 0){    
+                        for (Observation obs : grid[x_jug][y_jug-2]){ // Veo si se queda quieto porque pica para tirar la roca
+                            if (obs.getType() == ObservationType.BOULDER)
+                                hay_roca = true;
+                        }
+                    }
+                }
+                else if (jugador.getOrientation() == Orientation.E){
+                   for (Observation obs : grid[x_jug+1][y_jug]){
+                        if (obs.getType() == ObservationType.GEM || obs.getType() == ObservationType.GROUND)
+                            hay_gema_o_tierra = true;
+                    }
+                        
+                    for (Observation obs : grid[x_jug+1][y_jug-1]){
+                            if (obs.getType() == ObservationType.BOULDER)
+                                hay_roca = true;
+                    }
+                }
+                else if (jugador.getOrientation() == Orientation.W){
+                    for (Observation obs : grid[x_jug-1][y_jug]){
+                        if (obs.getType() == ObservationType.GEM || obs.getType() == ObservationType.GROUND)
+                            hay_gema_o_tierra = true;
+                    }
+                    
+                    for (Observation obs : grid[x_jug-1][y_jug-1]){
+                            if (obs.getType() == ObservationType.BOULDER)
+                                hay_roca = true;
+                    }
+                }
+                
+                
+                if (! (hay_gema_o_tierra && hay_roca)){ // Si la acción no es para excavar, se ha chocado -> me quedo quieto
+                    System.out.println("Se ha chocado con una roca! - it: " + it);
+                    it++;
+                    return Types.ACTIONS.ACTION_NIL; // Me quedo quieto y no ejecuto la acción del plan (la ejecutaré el siguiente turno si no vuelve a pasar)
+                }
+            }
+        }
+        
+        informacionPlan.plan.removeFirst();
+        
+        it++;
+        return accion;
     }
         
     // Usa el pathFinder para obtener una cota inferior (optimista) de la distancia entre
@@ -1483,6 +1558,8 @@ public class Agent extends BaseAgent{
     // la gema más cercana, los "n-1" lados más cortos del grafo formado por las gemas
     // y la distancia de ir desde goal a la gema más cercana
     private int getHeuristicGems(int xStart, int yStart, int xGoal, int yGoal, ArrayList<Observation> gems){
+        final float alfa = 2f; // Valor por el que se multiplica el valor de la heurística: pierde admisibilidad y monotonía pero es más eficiente
+        
         int total_dist = 0;
         
         // Veo si en mapaCircuitos está guardada la información sobre esta lista de gemas
@@ -1582,8 +1659,8 @@ public class Agent extends BaseAgent{
             // Guardo sum_dist_grafo + min_dist_goal en el mapa, asociado a esta lista de gemas
             mapaCircuitos.put(gems, new Integer(sum_dist_grafo + min_dist_goal));
         }
-        
-        return total_dist;
+                                                            
+        return (int)(alfa*total_dist);
     }
     
     // Obtiene las distancias aproximadas entre cada pareja de clusters usando una matriz de distancias
@@ -1857,8 +1934,9 @@ public class Agent extends BaseAgent{
     // Dados dos clústeres, devuelve un punto intermedio entre los dos que sea lo más "seguro" posible
     // Es decir, que si existe camino se pueda llegar a él
     // Algoritmo: busca un punto cercano a la casilla intermedia entre las dos gemas más cercanas de los
-    // dos clústeres. Esta casilla no puede tener ninguna gema a la derecha, izquierda, arriba ni abajo
+    // dos clústeres. Esta casilla no puede tener ninguna gema a la derecha, izquierda, arriba ni abajo, ni tampoco ningún enemigo en esas casillas
     // Si ese punto no existe, se devuelve -1, -1
+    // Aparte ese punto no puede ser un muro (aunque sí puede tener muros alrededor)
     
     // Da error si se llama y los dos clusters son iguales!!
     
@@ -1903,21 +1981,36 @@ public class Agent extends BaseAgent{
         int alto_grid = grid[0].length;
         
         boolean[][] matriz_rocas = new boolean[ancho_grid][alto_grid]; // Guardo las rocas en una matriz de booleanos
+        boolean[][] matriz_muros = new boolean[ancho_grid][alto_grid]; // Guardo los muros en una matriz de booleanos
+        boolean[][] matriz_enemigos = new boolean[ancho_grid][alto_grid]; // Guardo los enemigos en una matriz de booleanos
         
         for (int x = 0; x < ancho_grid; x++)
-            for (int y = 0; y < alto_grid; y++)
-                if (grid[x][y].get(0).getType() == ObservationType.BOULDER)
-                    matriz_rocas[x][y] = true;
-                else
-                    matriz_rocas[x][y] = false;
+            for (int y = 0; y < alto_grid; y++){
+                matriz_rocas[x][y] = false;
+                matriz_muros[x][y] = false;
+                matriz_enemigos[x][y] = false;
+                
+                for (Observation obs : grid[x][y]){
+                    if (obs.getType() == ObservationType.BOULDER)
+                        matriz_rocas[x][y] = true;
+                    else if (obs.getType() == ObservationType.WALL)
+                        matriz_muros[x][y] = true;
+                    else if (obs.getType() == ObservationType.BAT)
+                        matriz_enemigos[x][y] = true;
+                    else if (obs.getType() == ObservationType.SCORPION)
+                        matriz_enemigos[x][y] = true;
+                }
+            }
         
-        boolean casilla_encontrada = false;
         
         // Exploro esa casilla y las que están en un radio de +3,-3 en x e y
+         boolean casilla_encontrada = false;
         
-        if (matriz_rocas[x_centro][y_centro] == false && matriz_rocas[x_centro+1][y_centro] == false
-                        && matriz_rocas[x_centro-1][y_centro] == false && matriz_rocas[x_centro][y_centro+1] == false
-                        && matriz_rocas[x_centro][y_centro-1] == false){
+        if (matriz_rocas[x_centro][y_centro] == false && matriz_muros[x_centro][y_centro] == false && matriz_enemigos[x_centro][y_centro] == false
+                        && matriz_rocas[x_centro+1][y_centro] == false && matriz_enemigos[x_centro+1][y_centro] == false
+                        && matriz_rocas[x_centro-1][y_centro] == false && matriz_enemigos[x_centro-1][y_centro] == false
+                        && matriz_rocas[x_centro][y_centro+1] == false && matriz_enemigos[x_centro][y_centro+1] == false
+                        && matriz_rocas[x_centro][y_centro-1] == false && matriz_enemigos[x_centro][y_centro-1] == false){
             casilla[0] = x_centro;
             casilla[1] = y_centro;
             casilla_encontrada = true;
@@ -1937,11 +2030,12 @@ public class Agent extends BaseAgent{
                             this_y = y_centro + y_add*sig_y;
                             
                             
-                            if (    matriz_rocas[this_x][this_y] == false &&
-                                    matriz_rocas[this_x+1][this_y] == false
-                                    && matriz_rocas[this_x-1][this_y] == false
-                                    && matriz_rocas[this_x][this_y+1] == false
-                                    && matriz_rocas[this_x][this_y-1] == false){
+                            if (matriz_rocas[this_x][this_y] == false && matriz_muros[this_x][this_y] == false && matriz_enemigos[this_x][this_y] == false
+                                && matriz_rocas[this_x+1][this_y] == false && matriz_enemigos[this_x+1][this_y] == false
+                                && matriz_rocas[this_x-1][this_y] == false && matriz_enemigos[this_x-1][this_y] == false
+                                && matriz_rocas[this_x][this_y+1] == false && matriz_enemigos[this_x][this_y+1] == false
+                                && matriz_rocas[this_x][this_y-1] == false && matriz_enemigos[this_x][this_y-1] == false){
+                                
                                 casilla[0] = this_x;
                                 casilla[1] = this_y;
                                 casilla_encontrada = true;
