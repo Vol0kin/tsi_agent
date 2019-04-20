@@ -62,7 +62,6 @@ public class Agent extends BaseAgent{
     // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
-        //informacionPlan = new PathInformation();
         
         // Uso el pathFinder de GVG-AI para encontrar los caminos entre todas
         // las casillas evitando los muros (el resto de casillas supongo que
@@ -89,21 +88,6 @@ public class Agent extends BaseAgent{
         
         plan_no_morir = new LinkedList<>();
         
-        //PlayerObservation jugador = this.getPlayer(so);
-        
-        //System.out.println(new Vector2d(jugador.getX(), jugador.getY()-2));
-        
-        /*ArrayList<tools.pathfinder.Node> camino = 
-            //pf.getPath(new Vector2d(jugador.getX()-2, jugador.getY()), new Vector2d(jugador.getX()-2, jugador.getY()-4));
-            //pf.getPath(new Vector2d(1, 6), new Vector2d(1, 4));
-            //pf.getPath(new Vector2d(1, 1), new Vector2d(10, 1));
-              pf.getPath(new Vector2d(21, 7), new Vector2d(23, 7));*/
-        
-        // La primera casilla del camino no la guarda! (solo guarda las casillas por las que pasa)
-        
-        /*for (int i = 0; i < camino.size(); i++)
-            System.out.println(camino.get(i).position);*/
-        
         mapaCircuitos = new HashMap<ArrayList<Observation>, Integer>(); // Creo el mapa que usa getHeuristicGems
         
         clusterInf = new ClusterInformation(); // Creo la información de los clústeres
@@ -117,115 +101,18 @@ public class Agent extends BaseAgent{
     
     @Override
     public Types.ACTIONS act(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
-        //System.out.println(elapsedTimer.remainingTimeMillis());
-        
-        /*ArrayList<Observation> gems = new ArrayList();
-        int ind = -1;
-        LinkedList<Types.ACTIONS> plan = new LinkedList();*/
-        /*
-        if (it == 0) {
-            double t1 = System.currentTimeMillis();
-            //informacionPlan = pathExplorer(9, 4, stateObs); // Tarda 1 ms aprox.
-            //informacionPlan = pathExplorer(1, 4, stateObs);
-            // informacionPlan = stateExplorer(9, 4, stateObs); -> tarda unos 63 ms!!
-            
-            informacionPlan = pathExplorer(24, 1, stateObs); // NO LLEGA PORQUE SE CHOCA CON LAS ROCA QUE ESTAN CAYENDO!!!
-            
-            double t2 = System.currentTimeMillis();
-            System.out.println("Tiempo: " + (t2 - t1) + " ms");
-        }
-
-        if (it > 0 && informacionPlan.plan.isEmpty()) {
-            PlayerObservation pos = this.getPlayer(stateObs);
-            long threshold = 5;
-
-            ArrayList<Observation> goalGems = new ArrayList<>();
-            ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
-            goalGems.add(grid[5][3].get(0));
-            goalGems.add(grid[6][3].get(0));
-            goalGems.add(grid[7][3].get(0));
-            goalGems.add(grid[6][1].get(0));
-            goalGems.add(grid[7][1].get(0));
-            goalGems.add(grid[1][4].get(0));
-            informacionPlan = pathExplorer(pos, 10, 1, stateObs, goalGems, elapsedTimer, threshold);
-
-            for (Types.ACTIONS action: informacionPlan.plan) {
-                System.out.println(action);
-            }
-
-            for (Observation obs: informacionPlan.listaCasillas) {
-                System.out.println(obs);
-            }
-        }
-
-        plan = informacionPlan.plan;
-        
-        it++;
-
-        if (informacionPlan.plan.isEmpty())
-            return Types.ACTIONS.ACTION_NIL;
-        
-        return plan.pollFirst();*/
-        
-        
-        
-        /*
-        PlayerObservation jugador = this.getPlayer(stateObs);
-        
-        if (it == 0){ // Primera iteración -> creo los clústeres y el circuito <Tarda 4 ms>
-            clusterInf.createClusters(3, this.getGemsList(stateObs),
-                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
-            
-            // ¡Elimino el clúster 5 al que no se puede llegar!
-            clusterInf.clusters.remove(5);
-            
-            this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
-            this.saveCircuit(clusterInf, this.getPlayer(stateObs).getX(),
-            this.getPlayer(stateObs).getY(), this.getExit(stateObs).getX(),
-            this.getExit(stateObs).getY()); // Creo el camino a través de los clústeres
-            
-            for (Observation gem : clusterInf.clusters.get(1).getGems())
-                System.out.println(gem);
-            
-            // Voy a por el primer clúster -> NO PUEDE HABER UNA ROCA EN LA CASILLA FINAL
-            
-            informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
-                                         stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 15);
-        }
-        else if (!informacionPlan.foundPath){ // Todavía no ha terminado la búsqueda
-            informacionPlan = pathExplorer(jugador, jugador.getX(), jugador.getY()+1,
-                                         stateObs, clusterInf.clusters.get(1).getGems(),
-                                         elapsedTimer, 15);
-            System.out.println("It " + it + " - búsqueda no terminada");
-        }
-        
-        it++;
-
-
-        if (informacionPlan.foundPath){
-            System.out.println("It " + it + " - búsqueda terminada!!");
-
-            if (informacionPlan.plan.isEmpty()) {
-                return Types.ACTIONS.ACTION_NIL;
-            }
-
-            return informacionPlan.plan.pollFirst();
-        }
-        else
-            return Types.ACTIONS.ACTION_NIL;*/
-        
-        
-        // DESDE AQUI ----------------------------------
-
         PlayerObservation jugador = this.getPlayer(stateObs);
         Observation salida = this.getExit(stateObs);
         Types.ACTIONS accion = Types.ACTIONS.ACTION_NIL; // Acción que se va a ejecutar este turno
         
+        // Obtengo este turno las casillas prohibidas (cada turno los enemigos pueden cambiar de posición)
+        ArrayList<Observation> casillas_prohibidas = this.getCasillasProhibidas(stateObs);
+        
         // Primera iteración
         if (it == 0){ // planifico para acercarme al primer clúster     
             clusterInf.createClusters(3, this.getGemsList(stateObs),
-                    this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs),
+                    this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
             
             this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
             this.saveCircuit(clusterInf, jugador.getX(),
@@ -255,10 +142,10 @@ public class Agent extends BaseAgent{
             if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida entre este clúster y el siguiente
                 informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
-                                         elapsedTimer, 4);
+                                         elapsedTimer, 4, casillas_prohibidas);
             else
                 informacionPlan = pathExplorer(stateObs, gems_search,
-                                         elapsedTimer, 4);
+                                         elapsedTimer, 4, casillas_prohibidas);
             
             
             
@@ -289,7 +176,7 @@ public class Agent extends BaseAgent{
             x_search = level_exit.getX();
             y_search = level_exit.getY();
             
-            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
+            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1, casillas_prohibidas);
             //System.out.println("Plan: " + informacionPlan.plan);
             
             informacionPlan.searchComplete = true; // Tiene que terminar en un turno
@@ -298,7 +185,7 @@ public class Agent extends BaseAgent{
         if (!hay_que_replanificar && it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
             informacionPlan = pathExplorer(x_search, y_search,
                     stateObs, gems_search,
-                    elapsedTimer, 4);
+                    elapsedTimer, 4, casillas_prohibidas);
         }
 
         
@@ -317,8 +204,14 @@ public class Agent extends BaseAgent{
                 // Elimino de esas gemas las del cluster al que no se puede llegar
                 gemas_actuales.removeAll(gemas_no_accesibles);
                 
+                if (gemas_actuales.size() == 0){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
+                    gemas_no_accesibles.clear();
+                    gemas_actuales = this.getGemsList(stateObs);
+                }
+                
                 clusterInf.createClusters(3, gemas_actuales,
-                this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+                this.getBouldersList(stateObs), this.getWallsList(stateObs),
+                this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
             
                 this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
                 this.saveCircuit(clusterInf, jugador.getX(),
@@ -340,7 +233,7 @@ public class Agent extends BaseAgent{
             if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT){ // Veo si tengo que planificar para abandonar el nivel
                 Observation salida_nivel = this.getExit(stateObs);
                 
-                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1);
+                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, casillas_prohibidas);
                 informacionPlan.searchComplete = true; // Tiene que terminar en un turno
             }
             
@@ -354,7 +247,7 @@ public class Agent extends BaseAgent{
 
                     informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 4);
+                                             elapsedTimer, 4, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -364,7 +257,7 @@ public class Agent extends BaseAgent{
                     }
                 }
                 else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
-                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
+                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1, casillas_prohibidas);
 
                     informacionPlan.searchComplete = true; // Tiene que terminar en un turno
                 }
@@ -406,10 +299,10 @@ public class Agent extends BaseAgent{
                     if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
                         informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 4);
+                                             elapsedTimer, 4, casillas_prohibidas);
                     else // Si no, le dejo que termine en cualquier gema
                         informacionPlan = pathExplorer(stateObs, gems_search,
-                                             elapsedTimer, 4);
+                                             elapsedTimer, 4, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -1497,6 +1390,7 @@ public class Agent extends BaseAgent{
 
                         // Skip nextPosition if its contained in ignoreList
                         if (ignoreList != null && ignoreList.contains(nextPosition)) {
+                            System.out.println("IGNORE LIST");
                             continue;
                         }
 
@@ -2725,5 +2619,52 @@ public class Agent extends BaseAgent{
             }
         
         return casilla;
+    }
+    
+    // Devuelve una lista de casillas (observaciones) que se corresponden con las casillas
+    // donde hay enemigos y aquellas casillas a una dist. manhattan de 1 (arriba, abajo, derecha e izquierda)
+    // Este arraylist de observaciones se le pasará al A* después para que evite estas casillas
+    
+    private ArrayList<Observation> getCasillasProhibidas(StateObservation stateObs){
+        ArrayList<Observation> bats = this.getBatsList(stateObs);
+        ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
+        ArrayList<Observation> casillas_prohibidas = new ArrayList<>();
+        
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+        int ancho = grid.length;
+        int alto = grid[0].length;
+        boolean[][] matrix_cas_prob = new boolean[ancho][alto]; // Por defecto a false
+        int x_act, y_act;
+        
+        for (Observation bat : bats){
+            x_act = bat.getX();
+            y_act = bat.getY();
+            
+            matrix_cas_prob[x_act][y_act] = true;
+            matrix_cas_prob[x_act+1][y_act] = true;
+            matrix_cas_prob[x_act-1][y_act] = true;
+            matrix_cas_prob[x_act][y_act+1] = true;
+            matrix_cas_prob[x_act][y_act-1] = true;
+        }
+        
+        for (Observation scorpion : scorpions){
+            x_act = scorpion.getX();
+            y_act = scorpion.getY();
+            
+            matrix_cas_prob[x_act][y_act] = true;
+            matrix_cas_prob[x_act+1][y_act] = true;
+            matrix_cas_prob[x_act-1][y_act] = true;
+            matrix_cas_prob[x_act][y_act+1] = true;
+            matrix_cas_prob[x_act][y_act-1] = true;
+        }
+        
+        // Recorro la matriz y por cada casilla que valga true añado una observacion con esa posición
+        for (int this_x = 0; this_x < ancho; this_x++)
+            for (int this_y = 0; this_y < alto; this_y++){
+                if (matrix_cas_prob[this_x][this_y] == true)
+                    casillas_prohibidas.add(new Observation(this_x, this_y, ObservationType.WALL));
+            }
+        
+        return casillas_prohibidas;
     }
 }

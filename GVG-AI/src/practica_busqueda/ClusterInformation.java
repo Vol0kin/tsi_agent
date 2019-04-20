@@ -34,7 +34,9 @@ public class ClusterInformation {
     // epsilon: radio (en distancia Manhattan) en el que se buscan gemas para el mismo clúster
     // gems -> lista de gemas del mapa
     // Este método también llama al método de calcular la dicultad para cada clúster
-    public void createClusters(int epsilon, ArrayList<Observation> gems, ArrayList<Observation> rocas, ArrayList<Observation> muros){
+    public void createClusters(int epsilon, ArrayList<Observation> gems, ArrayList<Observation> rocas, ArrayList<Observation> muros,
+        ArrayList<Observation> bats, ArrayList<Observation> scorpions){
+        
         int gems_size = gems.size();
         
         int[] ind_cluster = new int[gems_size]; // Indice del clúster al que pertenece la gema -> -1 si no pertenece a ningún clúster todavía
@@ -75,11 +77,6 @@ public class ClusterInformation {
             }
         }
         
-        /*
-        for (int i = 0; i < gems_size; i++)
-            System.out.println(ind_cluster[i]);*/
-        
-        
         clusters = new ArrayList();
         
         for (int i = 0; i <= num_cluster; i++)
@@ -88,17 +85,10 @@ public class ClusterInformation {
         // Añado cada gema a su clúster correspondiente
         for (int i = 0; i < gems_size; i++)
             clusters.get(ind_cluster[i]).addGem(gems.get(i));
-   
-        
-        System.out.println("Número de clusters: " + num_cluster);
-        for (int i = 0; i <= num_cluster; i++){
-            System.out.println(clusters.get(i).getNumGems());
-        }
-        
-        
+    
         // Calculo la dificultad de cada cluster (ese método ya calcula el pathlength y num rocas y muros)
         for (int i = 0; i <= num_cluster; i++)
-            clusters.get(i).calcularDificultad(rocas, muros);
+            clusters.get(i).calcularDificultad(rocas, muros, bats, scorpions);
     }
     
     // Este método se tiene que llamar después de createClusters.

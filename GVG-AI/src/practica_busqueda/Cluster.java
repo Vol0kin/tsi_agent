@@ -13,6 +13,7 @@ public class Cluster {
     private int pathLength; // Longitud aproximada del camino que recorre todas las gemas del clúster
     private int numRocas; // Número de rocas que hay en el cuadrado (dado por la gema más arriba a la izquierda y abajo a la derecha)
     private int numMuros; // Número de muros que hay en el cuadrado
+    private int numEnemigos; // Número de enemigos (de cualquier tipo) en el cuadrado
     private int dificultad; // Valor heurístico que representa la dificultad de coger todas las gemas (cuanto mayor sea, peor)
      
     public Cluster(){
@@ -99,12 +100,13 @@ public class Cluster {
     // El cuadrado del clúster viene dado por la gema superior izquierda y la inferior derecha
     // Se cuentan todas las gemas y muros dentro de ese cuadrado, inclusive las filas y columnas
     // de esas dos gemas mencionadas
-    private void calculateNumRocasyMuros(ArrayList<Observation> rocas, ArrayList<Observation> muros){
+    private void calculateNumRocasMurosyEnemigos(ArrayList<Observation> rocas, ArrayList<Observation> muros,
+            ArrayList<Observation> bats, ArrayList<Observation> scorpions){
         if (gems.size() == 1){
-            numRocas = numMuros = 0;
+            numRocas = numMuros = numEnemigos = 0;
         }
         else{
-            numRocas = numMuros = 0;
+            numRocas = numMuros = numEnemigos = 0;
             
             // Calculo el cuadrado -> calculo x_min, x_max, y_min, y_max
             int x_min = 1000, x_max = -1, y_min = 1000, y_max = -1;
@@ -130,7 +132,7 @@ public class Cluster {
                 }
             }
             
-            // Veo el número de muros y rocas que hay en ese cuadrado
+            // Veo el número de muros, rocas y enemigos que hay en ese cuadrado
             int x_obs, y_obs;
             
             for (Observation roca : rocas){ // Rocas
@@ -148,22 +150,39 @@ public class Cluster {
                 if (x_obs >= x_min && x_obs <= x_max && y_obs >= y_min && y_obs <= y_max)
                     numMuros += 1;
             }
+            
+            for (Observation bat : bats){ // Murciélagos
+                x_obs = bat.getX();
+                y_obs = bat.getY();
+                
+                if (x_obs >= x_min && x_obs <= x_max && y_obs >= y_min && y_obs <= y_max)
+                    numEnemigos += 1;
+            }
+            
+            for (Observation scorpion : scorpions){ // Escorpiones
+                x_obs = scorpion.getX();
+                y_obs = scorpion.getY();
+                
+                if (x_obs >= x_min && x_obs <= x_max && y_obs >= y_min && y_obs <= y_max)
+                    numEnemigos += 1;
+            }
         }
     }
     
     // Calcula un valor heurístico que representa la dificultad de obtener las gemas del clúster
     // Cuanto más alto sea peor (más difícil/más se tardará en coger todas las gemas)
     // Tiene en cuenta el pathLength, numRocas y numMuros
-    // Heurística: valor = pathLength + numMuros*0.5 + numRocas, redondeado hacia arriba
+    // Heurística: valor = pathLength + numMuros*0.5 + numRocas + numEnemigos*2, redondeado hacia arriba
     
     // Se encarga de llamar a los métodos calculatePathLength y calculateNumRocasyMuros
-    public void calcularDificultad(ArrayList<Observation> rocas, ArrayList<Observation> muros){
+    public void calcularDificultad(ArrayList<Observation> rocas, ArrayList<Observation> muros,
+            ArrayList<Observation> bats, ArrayList<Observation> scorpions){
         this.calculatePathLength();
-        this.calculateNumRocasyMuros(rocas, muros);
+        this.calculateNumRocasMurosyEnemigos(rocas, muros, bats, scorpions);
         
         float valor;
         
-        valor = (float) (pathLength + numMuros*0.5 + numRocas);
+        valor = (float) (pathLength + numMuros*0.5 + numRocas + numEnemigos*2);
         
         dificultad = (int)Math.ceil(valor);
     }
