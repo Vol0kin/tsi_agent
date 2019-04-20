@@ -96,14 +96,14 @@ public class ClusterInformation {
     // El primer nodo es la posición inicial del jugador (que se le pasa al método)
     // y el último nodo es la salida (que también se le pasa como parámetro)
     // Elige un camino a través de los clústeres de forma que el número de gemas
-    // total sea 9 o más y que sea el tour más corto posible
+    // total sea NEEDED_GEMS o más y que sea el tour más corto posible
     // Para medir la distancia entre clústeres se usa la matriz de distancias
     // (que usa el método getHeuristicDistance)
     // > Parámetros distClusterStart y distClusterGoal: v[i] es la distancia del
     // clúster "i" con el punto de inicio o de fin, respectivamente
     // Algoritmo: usa un algoritmo B&B
 
-    public void createCircuit(int xStart, int yStart, int xGoal, int yGoal, int[] distClusterStart, int[] distClusterGoal){
+    public void createCircuit(int xStart, int yStart, int xGoal, int yGoal, int[] distClusterStart, int[] distClusterGoal, int needed_gems){
         int num_clusters = clusters.size();
         
         if (num_clusters == 1){ // Si solo hay un clúster, no tiene sentido usar el algoritmo
@@ -194,7 +194,7 @@ public class ClusterInformation {
                     }
                     else{
                         // Compruebo si he conseguido un número suficiente de gemas para abandonar el nivel
-                        if (num_gems_sol >= 9){ // Es solución final -> veo si al sumarle la distancia hasta la casilla final sigue siendo la mejor solución
+                        if (num_gems_sol >= needed_gems){ // Es solución final -> veo si al sumarle la distancia hasta la casilla final sigue siendo la mejor solución
                             
                             if (dist_act + distClusterGoal[sol_act[pos_act]] < dist_mejor_sol){
                                 int j;
