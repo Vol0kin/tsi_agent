@@ -39,7 +39,7 @@ public class Agent extends BaseAgent{
     
     // Información extra para la planificación
     
-    private int sig_cluster = 0; // Indice del siguiente clúster a coger del objetivo
+    private int sig_cluster = 0; // Indice del cluster actual a coger del circuito
     
     private boolean en_cluster = false; // Vale false si estamos yendo hacia el siguiente clúster y true si ya hemos llegado y estamos cogiendo sus gemas
     
@@ -221,37 +221,38 @@ public class Agent extends BaseAgent{
 
         PlayerObservation jugador = this.getPlayer(stateObs);
         Observation salida = this.getExit(stateObs);
-        ArrayList<Integer> circuito_prov = new ArrayList<>(); // Uso este circuito en vez del real de forma provisional
         Types.ACTIONS accion = Types.ACTIONS.ACTION_NIL; // Acción que se va a ejecutar este turno
-        circuito_prov.add(1);
-        circuito_prov.add(0);
-        //circuito_prov.add(4);
         
         // Primera iteración
         if (it == 0){ // planifico para acercarme al primer clúster
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
             
-            // > ¡Elimino el clúster 5 al que no se puede llegar!
-            //clusterInf.clusters.remove(5); // VER LO QUE PASA CUANDO NO ENCUENTRA CAMINO
+            // > ¡Elimino el clúster 5 y 3 al que no se puede llegar!
+            clusterInf.clusters.remove(5); // VER LO QUE PASA CUANDO NO ENCUENTRA CAMINO
+            //clusterInf.clusters.remove(3);
             
             this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
             this.saveCircuit(clusterInf, jugador.getX(),
             jugador.getY(), salida.getX(),
             salida.getY()); // Creo el camino a través de los clústeres
             
-            gems_search = clusterInf.clusters.get(circuito_prov.get(sig_cluster)).getGems();
+            gems_search = clusterInf.getGemsCircuitCluster(0); // Cojo las gemas del clúster 1 del circuito
             
             int[] casilla_search = this.getPuntoIntermedioClusters(gems_search,
-                    clusterInf.clusters.get(circuito_prov.get(sig_cluster+1)).getGems(), stateObs);
+                    clusterInf.getGemsCircuitCluster(1), stateObs);
             
             x_search = casilla_search[0];
             y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-            
+
             System.out.println(x_search + " " + y_search);
             
-            informacionPlan = pathExplorer(x_search, y_search,
+            if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida entre este clúster y el siguiente
+                informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
+                                         elapsedTimer, 2);
+            else
+                informacionPlan = pathExplorer(stateObs, gems_search,
                                          elapsedTimer, 2);
         }
         
@@ -280,8 +281,8 @@ public class Agent extends BaseAgent{
             x_search = level_exit.getX();
             y_search = level_exit.getY();
             
-            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 5);
-            System.out.println("Plan: " + informacionPlan.plan);
+            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 2);
+            //System.out.println("Plan: " + informacionPlan.plan);
             
             informacionPlan.searchComplete = true; // Tiene que terminar en un turno
         }
@@ -303,14 +304,14 @@ public class Agent extends BaseAgent{
             if (abandonando_nivel){ // Veo si tengo que planificar para abandonar el nivel
                 Observation salida_nivel = this.getExit(stateObs);
                 
-                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 5);
+                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 2);
                 informacionPlan.searchComplete = true; // Tiene que terminar en un turno
             }
             
             else{ // Planifico para coger las gemas del clúster o ir al punto intermedio con el siguiente
                 // Veo si quedan gemas en el clúster
-                Cluster this_cluster = clusterInf.clusters.get(circuito_prov.get(sig_cluster));
-                this_cluster.removeCapturedGems(this.getGemsList(stateObs));
+                clusterInf.removeCapturedGems(clusterInf.circuito.get(sig_cluster), this.getGemsList(stateObs));
+                Cluster this_cluster = clusterInf.clusters.get(clusterInf.circuito.get(sig_cluster));
 
                 if (this_cluster.getNumGems() > 0){ // Todavía le quedan gemas
                     gems_search = this_cluster.getGems();
@@ -327,10 +328,7 @@ public class Agent extends BaseAgent{
                     }
                 }
                 else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
-                    x_search = 14; // CAMBIARLO CUANDO META EL CIRCUITO!
-                    y_search = 5;
-
-                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 5);
+                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 2);
 
                     informacionPlan.searchComplete = true; // Tiene que terminar en un turno
                 }
@@ -345,14 +343,29 @@ public class Agent extends BaseAgent{
             if (informacionPlan.plan.isEmpty()) { // Si he acabado de ejecutar el plan, planifico para el clúster siguiente
                 System.out.println("Plan vacío");
                 sig_cluster++;
-                gems_search = clusterInf.clusters.get(circuito_prov.get(sig_cluster)).getGems();
-                x_search = 14;
-                y_search = 5;
+                gems_search = clusterInf.getGemsCircuitCluster(sig_cluster);
+                int[] casilla_search;
+                
+                if (sig_cluster+1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
+                    casilla_search = this.getPuntoIntermedioClusters(gems_search,
+                        clusterInf.getGemsCircuitCluster(sig_cluster+1), stateObs);
+                
+                else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
+                    casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                        this.getExit(stateObs), stateObs);
+                }
+            
+                x_search = casilla_search[0];
+                y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
                 
                 //System.out.println(gems_search);
                 
-                informacionPlan = pathExplorer(x_search, y_search,
+                if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
+                    informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
+                                         elapsedTimer, 2);
+                else // Si no, le dejo que termine en cualquier gema
+                    informacionPlan = pathExplorer(stateObs, gems_search,
                                          elapsedTimer, 2);
                 
                 if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
@@ -2186,7 +2199,7 @@ public class Agent extends BaseAgent{
                 sum_dist_grafo += smallest_dist[i];
             }
 
-            // Calculo las gemas más cercanas al punto de inicio y de fin
+            // Calculo las gemas más cercanas al punto de inicio
 
             int min_dist_orig = 1000;
             int dist_orig;
@@ -2449,38 +2462,12 @@ public class Agent extends BaseAgent{
         
         clust_inf.nodos_circuito.add(new Integer(ind_min));
     }
-    
-    // Este método transforma el plan dado por el A* sencillo para ir a la gema que funciona como nodo de entrada
-    // del siguiente clúster y devuelve el mismo plan pero solo con las acciones antes de mover una roca.
-    // Es decir, si la acción i mueve una roca, devuelve el plan con las acciones [0, i-1]
-    // x_ini, y_ini -> posición desde donde se empezará a aplicar el plan
-    
-    // VER SI LO ELIMINO
-    
-    /*
-    private LinkedList<Types.ACTIONS> prunePlan(StateObservation stateObs, LinkedList<Types.ACTIONS> plan_inicial, int x_ini, int y_ini, Orientation or_ini){
-        LinkedList<Types.ACTIONS> plan_podado;
-        int x_act = x_ini;
-        int y_act = y_ini;
-        Orientation or_act = or_ini;
-        Types.ACTIONS sig_acc;
-        int num_acciones = plan_inicial.size();
-        int i;
-        
-        for (i = 0; i < num_acciones; i++){ // Recorro el plan hasta que encuentre una acción que mueva una roca
-            sig_acc = plan_inicial.get(i);
-            
-        }
-         
-        
-        return plan_inicial;
-    }*/
-    
+  
     // Dados dos clústeres, devuelve un punto intermedio entre los dos que sea lo más "seguro" posible
     // Es decir, que si existe camino se pueda llegar a él
     // Algoritmo: busca un punto cercano a la casilla intermedia entre las dos gemas más cercanas de los
     // dos clústeres. Esta casilla no puede tener ninguna gema a la derecha, izquierda, arriba ni abajo, ni tampoco ningún enemigo en esas casillas
-    // Si ese punto no existe, se devuelve -1, -1
+    // Si ese punto no existe, se devuelve (-1, -1) y al A* no se le pasará ninguna casilla final (podrá terminar en la gema que sea)
     // Aparte ese punto no puede ser un muro (aunque sí puede tener muros alrededor)
     
     // Da error si se llama y los dos clusters son iguales!!
@@ -2519,6 +2506,111 @@ public class Agent extends BaseAgent{
         int y_2 = gems_2.get(ind_2).getY();
         
         int x_centro = (x_1 + x_2) / 2; // Empiezo en el punto intermedio entre las dos gemas más cercanas
+        int y_centro = (y_1 + y_2) / 2;
+        
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
+        int ancho_grid = grid.length;
+        int alto_grid = grid[0].length;
+        
+        boolean[][] matriz_rocas = new boolean[ancho_grid][alto_grid]; // Guardo las rocas en una matriz de booleanos
+        boolean[][] matriz_muros = new boolean[ancho_grid][alto_grid]; // Guardo los muros en una matriz de booleanos
+        boolean[][] matriz_enemigos = new boolean[ancho_grid][alto_grid]; // Guardo los enemigos en una matriz de booleanos
+        
+        for (int x = 0; x < ancho_grid; x++)
+            for (int y = 0; y < alto_grid; y++){
+                matriz_rocas[x][y] = false;
+                matriz_muros[x][y] = false;
+                matriz_enemigos[x][y] = false;
+                
+                for (Observation obs : grid[x][y]){
+                    if (obs.getType() == ObservationType.BOULDER)
+                        matriz_rocas[x][y] = true;
+                    else if (obs.getType() == ObservationType.WALL)
+                        matriz_muros[x][y] = true;
+                    else if (obs.getType() == ObservationType.BAT)
+                        matriz_enemigos[x][y] = true;
+                    else if (obs.getType() == ObservationType.SCORPION)
+                        matriz_enemigos[x][y] = true;
+                }
+            }
+        
+        
+        // Exploro esa casilla y las que están en un radio de +3,-3 en x e y
+         boolean casilla_encontrada = false;
+        
+        if (matriz_rocas[x_centro][y_centro] == false && matriz_muros[x_centro][y_centro] == false && matriz_enemigos[x_centro][y_centro] == false
+                        && matriz_rocas[x_centro+1][y_centro] == false && matriz_enemigos[x_centro+1][y_centro] == false
+                        && matriz_rocas[x_centro-1][y_centro] == false && matriz_enemigos[x_centro-1][y_centro] == false
+                        && matriz_rocas[x_centro][y_centro+1] == false && matriz_enemigos[x_centro][y_centro+1] == false
+                        && matriz_rocas[x_centro][y_centro-1] == false && matriz_enemigos[x_centro][y_centro-1] == false){
+            casilla[0] = x_centro;
+            casilla[1] = y_centro;
+            casilla_encontrada = true;
+            }
+        
+        int this_x, this_y;
+        
+        for (int x_add = 1; x_add <= 3 && !casilla_encontrada; x_add++)
+            for (int y_add = 1; y_add <= 3 && !casilla_encontrada; y_add++){
+                
+                // Exploro las 8 casillas dadas por +-x_add y +-y_add
+                for (int sig_x = -1; sig_x <= 1 && !casilla_encontrada; sig_x++) // Signo de x
+                    for (int sig_y = -1; sig_y <=1 && !casilla_encontrada; sig_y++){ // Signo de y
+                        
+                        if (sig_x != 0 || sig_y != 0){ // No puede ser la casilla central
+                            this_x = x_centro + x_add*sig_x;
+                            this_y = y_centro + y_add*sig_y;
+                            
+                            
+                            if (matriz_rocas[this_x][this_y] == false && matriz_muros[this_x][this_y] == false && matriz_enemigos[this_x][this_y] == false
+                                && matriz_rocas[this_x+1][this_y] == false && matriz_enemigos[this_x+1][this_y] == false
+                                && matriz_rocas[this_x-1][this_y] == false && matriz_enemigos[this_x-1][this_y] == false
+                                && matriz_rocas[this_x][this_y+1] == false && matriz_enemigos[this_x][this_y+1] == false
+                                && matriz_rocas[this_x][this_y-1] == false && matriz_enemigos[this_x][this_y-1] == false){
+                                
+                                casilla[0] = this_x;
+                                casilla[1] = this_y;
+                                casilla_encontrada = true;
+                            }
+                        }
+                    } 
+            }
+        
+        return casilla;
+    }
+
+    // Se le llama para el último clúster
+    // Es necesario usarlo para saber que cuando cojamos las gemas de ese clúster no nos quedaremos encerrados y podremos ir a la salida
+    
+    private int[] getPuntoIntermedioClusterSalida(ArrayList<Observation> gems, Observation exit, StateObservation stateObs){
+        int[] casilla = new int[2];
+        casilla[0] = -1;
+        casilla[1] = -1;
+        
+        // Calculo la gema más cercana a la salida
+        int num_gems = gems.size();
+        int min_dist = 10000;
+        int ind = -1;
+        int dist;
+        Observation this_gem;
+        
+        for (int i = 0; i < num_gems; i++){
+            this_gem = gems.get(i);
+            
+            dist = this.getHeuristicDistance(this_gem, exit);
+  
+            if (dist < min_dist){
+                min_dist = dist;
+                ind = i;
+            }
+        }
+        
+        int x_1 = gems.get(ind).getX();
+        int y_1 = gems.get(ind).getY();
+        int x_2 = exit.getX(); // x e y de la salida
+        int y_2 = exit.getY();
+        
+        int x_centro = (x_1 + x_2) / 2; // Empiezo en el punto intermedio
         int y_centro = (y_1 + y_2) / 2;
         
         ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);

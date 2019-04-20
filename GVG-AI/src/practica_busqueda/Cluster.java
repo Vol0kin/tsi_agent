@@ -154,7 +154,7 @@ public class Cluster {
     // Calcula un valor heurístico que representa la dificultad de obtener las gemas del clúster
     // Cuanto más alto sea peor (más difícil/más se tardará en coger todas las gemas)
     // Tiene en cuenta el pathLength, numRocas y numMuros
-    // Heurística: valor = pathLength + numMuros + numRocas*1.5, redondeado hacia arriba
+    // Heurística: valor = pathLength + numMuros*0.5 + numRocas, redondeado hacia arriba
     
     // Se encarga de llamar a los métodos calculatePathLength y calculateNumRocasyMuros
     public void calcularDificultad(ArrayList<Observation> rocas, ArrayList<Observation> muros){
@@ -163,7 +163,7 @@ public class Cluster {
         
         float valor;
         
-        valor = (float) (pathLength + numMuros + numRocas*1.5);
+        valor = (float) (pathLength + numMuros*0.5 + numRocas);
         
         dificultad = (int)Math.ceil(valor);
     }
