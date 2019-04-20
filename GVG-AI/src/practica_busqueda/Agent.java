@@ -57,6 +57,8 @@ public class Agent extends BaseAgent{
     
     private int last_x, last_y; // Posición x e y del jugador en el turno anterior
     
+    private ArrayList<Observation> gemas_no_accesibles; // Array de aquellas gemas de clústers a los que no se ha conseguido llegar
+    
     // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
@@ -109,11 +111,8 @@ public class Agent extends BaseAgent{
         PlayerObservation jugador = this.getPlayer(so);
         last_x = jugador.getX();
         last_y = jugador.getY();
-        
-        // Información extra para la planificación
-        
-        
-        //informacionPlan = this.pathExplorer(14, 5, so);
+
+        gemas_no_accesibles = new ArrayList<>();
     }
     
     @Override
@@ -224,36 +223,46 @@ public class Agent extends BaseAgent{
         Types.ACTIONS accion = Types.ACTIONS.ACTION_NIL; // Acción que se va a ejecutar este turno
         
         // Primera iteración
-        if (it == 0){ // planifico para acercarme al primer clúster
+        if (it == 0){ // planifico para acercarme al primer clúster     
             clusterInf.createClusters(3, this.getGemsList(stateObs),
                     this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
-            
-            // > ¡Elimino el clúster 5 y 3 al que no se puede llegar!
-            clusterInf.clusters.remove(5); // VER LO QUE PASA CUANDO NO ENCUENTRA CAMINO
-            //clusterInf.clusters.remove(3);
             
             this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
             this.saveCircuit(clusterInf, jugador.getX(),
             jugador.getY(), salida.getX(),
             salida.getY()); // Creo el camino a través de los clústeres
             
+            for (Cluster cluster : clusterInf.clusters)
+                System.out.println(cluster.getGems());
+            
             gems_search = clusterInf.getGemsCircuitCluster(0); // Cojo las gemas del clúster 1 del circuito
             
-            int[] casilla_search = this.getPuntoIntermedioClusters(gems_search,
+            int[] casilla_search;
+            
+            if (1 < clusterInf.circuito.size()) // El circuito tiene al menos dos clusters
+                casilla_search = this.getPuntoIntermedioClusters(gems_search,
                     clusterInf.getGemsCircuitCluster(1), stateObs);
+            
+            else // Si el circuito tiene solo un cluster
+                casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                    this.getExit(stateObs), stateObs);
             
             x_search = casilla_search[0];
             y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-
-            System.out.println(x_search + " " + y_search);
+            
+            //System.out.println(x_search + " " + y_search);
             
             if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida entre este clúster y el siguiente
                 informacionPlan = pathExplorer(x_search, y_search,
                                          stateObs, gems_search,
-                                         elapsedTimer, 2);
+                                         elapsedTimer, 4);
             else
                 informacionPlan = pathExplorer(stateObs, gems_search,
-                                         elapsedTimer, 2);
+                                         elapsedTimer, 4);
+            
+            
+            
+            System.out.println("Final it 0");
         }
         
         // Compruebo si al aplicar la última acción nos hemos movido de casilla
@@ -271,7 +280,6 @@ public class Agent extends BaseAgent{
             return plan_no_morir.pollFirst();
         }
         
-        
         // Si tengo 9 gemas, planifico para abandonar el nivel
         if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT && !abandonando_nivel){
             System.out.println("Voy a abandonar el nivel - x: " + this.getPlayer(stateObs).getX() + " y: " + this.getPlayer(stateObs).getY() + " or: " + this.getPlayer(stateObs).getOrientation());
@@ -281,19 +289,47 @@ public class Agent extends BaseAgent{
             x_search = level_exit.getX();
             y_search = level_exit.getY();
             
-            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 2);
+            informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
             //System.out.println("Plan: " + informacionPlan.plan);
             
             informacionPlan.searchComplete = true; // Tiene que terminar en un turno
         }
         
-        
         if (!hay_que_replanificar && it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
             informacionPlan = pathExplorer(x_search, y_search,
                     stateObs, gems_search,
-                    elapsedTimer, 2);
+                    elapsedTimer, 4);
         }
 
+        
+        // Si no ha encontrado un camino, tengo que volver a planificar
+        if (informacionPlan.searchComplete && !informacionPlan.existsPath){
+            hay_que_replanificar = true;
+            System.out.println("No existe camino - it: " + it);
+                
+            // Clúster -> no puedo coger ese clúster, lo elimino (le queden o no gemas) y vuelvo a crear otro circuito 
+            if (this.getNumGems(stateObs) < NUM_GEMS_FOR_EXIT){
+                // Vuelvo a crear toda la información de los clústeres desde el principio (no tarda mucho (en el nivel 1 tarda 5 ms como mucho))
+                ArrayList<Observation> gemas_actuales = this.getGemsList(stateObs);
+                
+                gemas_no_accesibles.addAll(gems_search); // Añado las gemas del clúster actual como no accesibles
+                
+                // Elimino de esas gemas las del cluster al que no se puede llegar
+                gemas_actuales.removeAll(gemas_no_accesibles);
+                
+                clusterInf.createClusters(3, gemas_actuales,
+                this.getBouldersList(stateObs), this.getWallsList(stateObs)); // Creo los clusters
+            
+                this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+                this.saveCircuit(clusterInf, jugador.getX(),
+                jugador.getY(), salida.getX(),
+                salida.getY()); // Creo el camino a través de los clústeres
+
+                sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
+            }
+        }
+        
+        
         // Tengo que replanificar
         // Veo si quedan gemas en el clúster actual y si es así cojo las que quedan
         // Si no quedan gemas, me voy al punto intermedio entre este clúster y el siguiente
@@ -301,10 +337,10 @@ public class Agent extends BaseAgent{
         if (hay_que_replanificar){
             hay_que_replanificar = false;
             
-            if (abandonando_nivel){ // Veo si tengo que planificar para abandonar el nivel
+            if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT){ // Veo si tengo que planificar para abandonar el nivel
                 Observation salida_nivel = this.getExit(stateObs);
                 
-                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 2);
+                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1);
                 informacionPlan.searchComplete = true; // Tiene que terminar en un turno
             }
             
@@ -318,7 +354,7 @@ public class Agent extends BaseAgent{
 
                     informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 2);
+                                             elapsedTimer, 4);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -328,7 +364,7 @@ public class Agent extends BaseAgent{
                     }
                 }
                 else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
-                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 2);
+                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
 
                     informacionPlan.searchComplete = true; // Tiene que terminar en un turno
                 }
@@ -336,45 +372,52 @@ public class Agent extends BaseAgent{
         }
         
         
-        if (informacionPlan.searchComplete){ // Si ya ha encontrado camino, se ejecuta
+        if (informacionPlan.searchComplete){ // Ya ha terminado la planificación
             //System.out.println("Camino encontrado - it=" + it);
             //System.out.println(informacionPlan.plan);
-
+            
             if (informacionPlan.plan.isEmpty()) { // Si he acabado de ejecutar el plan, planifico para el clúster siguiente
                 System.out.println("Plan vacío");
-                sig_cluster++;
-                gems_search = clusterInf.getGemsCircuitCluster(sig_cluster);
-                int[] casilla_search;
                 
-                if (sig_cluster+1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
-                    casilla_search = this.getPuntoIntermedioClusters(gems_search,
-                        clusterInf.getGemsCircuitCluster(sig_cluster+1), stateObs);
-                
-                else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
-                    casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
-                        this.getExit(stateObs), stateObs);
+                if (sig_cluster+1 >= clusterInf.circuito.size()){ // Me daría outOfBounds exception porque ya no hay ningún clúster más del circuito
+                    hay_que_replanificar = true;
+                    it++;
+                    return Types.ACTIONS.ACTION_NIL;
                 }
-            
-                x_search = casilla_search[0];
-                y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-                
-                //System.out.println(gems_search);
-                
-                if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
-                    informacionPlan = pathExplorer(x_search, y_search,
-                                         stateObs, gems_search,
-                                         elapsedTimer, 2);
-                else // Si no, le dejo que termine en cualquier gema
-                    informacionPlan = pathExplorer(stateObs, gems_search,
-                                         elapsedTimer, 2);
-                
-                if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
-                    accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
-                }
-                else{             
-                    accion = Types.ACTIONS.ACTION_NIL;
-                }
+                else{    
+                    sig_cluster++;
+                    gems_search = clusterInf.getGemsCircuitCluster(sig_cluster);
+                    int[] casilla_search;
 
+                    if (sig_cluster+1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
+                        casilla_search = this.getPuntoIntermedioClusters(gems_search,
+                            clusterInf.getGemsCircuitCluster(sig_cluster+1), stateObs);
+
+                    else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
+                        casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                            this.getExit(stateObs), stateObs);
+                    }
+
+                    x_search = casilla_search[0];
+                    y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
+
+                    //System.out.println(gems_search);
+
+                    if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
+                        informacionPlan = pathExplorer(x_search, y_search,
+                                             stateObs, gems_search,
+                                             elapsedTimer, 4);
+                    else // Si no, le dejo que termine en cualquier gema
+                        informacionPlan = pathExplorer(stateObs, gems_search,
+                                             elapsedTimer, 4);
+
+                    if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
+                        accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
+                    }
+                    else{             
+                        accion = Types.ACTIONS.ACTION_NIL;
+                    }
+                }
             } else{
                 accion = informacionPlan.plan.peekFirst();
             }

@@ -36,7 +36,7 @@ public class ClusterInformation {
     // Este método también llama al método de calcular la dicultad para cada clúster
     public void createClusters(int epsilon, ArrayList<Observation> gems, ArrayList<Observation> rocas, ArrayList<Observation> muros){
         int gems_size = gems.size();
-        boolean[] visited = new boolean[gems_size]; // Valor inicial -> false
+        
         int[] ind_cluster = new int[gems_size]; // Indice del clúster al que pertenece la gema -> -1 si no pertenece a ningún clúster todavía
         
         for (int i = 0; i < ind_cluster.length; i++)
@@ -45,23 +45,40 @@ public class ClusterInformation {
         int num_cluster = -1;
         Observation this_gem;
         
-        for (int i = 0; i < gems_size && !visited[i]; i++){
+        for (int i = 0; i < gems_size; i++){
             this_gem = gems.get(i);
             
-            if (ind_cluster[i] == -1){ // No ha sido visitada pero todavía no pertenece a ningún clúster -> creo un nuevo clúster y la añado
-                num_cluster++;
-                ind_cluster[i] = num_cluster; // La gema pertenece a ese clúster  
+            if (ind_cluster[i] == -1){ // No pertenece a ningún clúster -> creo un nuevo clúster y la añado
+                // Antes de crear un nuevo clúster veo si está lo suficientemente cerca de uno existente. Si es así, la añado a ese clúster
+                boolean ya_asignada = false;
+                
+                for (int j = 0; j < gems_size; j++){
+                    if(ind_cluster[j] != -1)
+                        if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon){
+                            ind_cluster[i] = ind_cluster[j];
+                            ya_asignada = true;
+                        }
+                }
+                
+                if (!ya_asignada){
+                    num_cluster++;
+                    ind_cluster[i] = num_cluster; // La gema pertenece a ese clúster
+                }
             }
             // Añado al clúster de la gema las gemas del vecindario
             
-            for (int j = 0; j < gems_size; j++){ // Tengo que recorrer también las gemas ya visitadas para que funcione bien!
+            for (int j = 0; j < gems_size; j++){
                 
-                if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon) // Esa gema es del vecindario -> la añado al clúster
-                    ind_cluster[j] = ind_cluster[i];
+                if (ind_cluster[j] == -1) // Veo si esa gema no era de ningún clúster todavía
+                    if (this_gem.getManhattanDistance(gems.get(j)) <= epsilon) // Esa gema es del vecindario -> la añado al clúster
+                        ind_cluster[j] = ind_cluster[i];
             }
-                
-            visited[i] = true;
         }
+        
+        /*
+        for (int i = 0; i < gems_size; i++)
+            System.out.println(ind_cluster[i]);*/
+        
         
         clusters = new ArrayList();
         
@@ -72,6 +89,13 @@ public class ClusterInformation {
         for (int i = 0; i < gems_size; i++)
             clusters.get(ind_cluster[i]).addGem(gems.get(i));
    
+        
+        System.out.println("Número de clusters: " + num_cluster);
+        for (int i = 0; i <= num_cluster; i++){
+            System.out.println(clusters.get(i).getNumGems());
+        }
+        
+        
         // Calculo la dificultad de cada cluster (ese método ya calcula el pathlength y num rocas y muros)
         for (int i = 0; i <= num_cluster; i++)
             clusters.get(i).calcularDificultad(rocas, muros);
