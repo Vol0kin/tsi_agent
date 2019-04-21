@@ -2088,20 +2088,27 @@ public class Agent extends BaseAgent{
         return plan;
     }
 
-    private Observation connectionToEnemy(StateObservation stateObs, Types.ACTIONS action, Observation enemy, PlayerObservation player) {
-
-        // Initialize closest grid to player to (-1, -1), in case the path is conected
-        Observation closestGridToPlayer = new Observation(-1, -1, ObservationType.EMPTY);
-
-        // Copy the stateObs and apply the given action
-        StateObservation forwardState = stateObs.copy();
-        forwardState.advance(action);
+    private boolean connectionToEnemy(StateObservation stateObs, Types.ACTIONS action, Observation enemy, PlayerObservation player) {
 
         // Get grid after applying the given action
-        ArrayList<Observation>[][] grid = this.getObservationGrid(forwardState);
+        ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
 
-        // Get next player position
-        PlayerObservation nextPlayerPos = this.getPlayer(forwardState);
+        // Get player positions
+        int xPlayer = player.getX(), yPlayer = player.getY();
+
+        if (player.getOrientation().equals(Orientation.N) && action.equals(Types.ACTIONS.ACTION_UP)) {
+            yPlayer--;
+        } else if (player.getOrientation().equals(Orientation.S) && action.equals(Types.ACTIONS.ACTION_DOWN)) {
+            yPlayer++;
+        } else if (player.getOrientation().equals(Orientation.E) && action.equals(Types.ACTIONS.ACTION_RIGHT)) {
+            xPlayer++;
+        } else if (player.getOrientation().equals(Orientation.W) && action.equals(Types.ACTIONS.ACTION_LEFT)) {
+            xPlayer--;
+        }
+
+        // Get next position
+        Observation nextPlayerPos = grid[xPlayer][yPlayer].get(0);
+
 
         // Create constant expressions
         final ObservationType EMPTY = ObservationType.EMPTY,
@@ -2163,20 +2170,8 @@ public class Agent extends BaseAgent{
             closedList.addFirst(currentNode);
         }
 
-        // If the player has been found, the path must be recreated in order
-        // to get the closest enemy grid to the player
-        if (foundPlayer) {
-            GridNode node = closedList.getFirst();
 
-            // Iterate over the nodes and get their observation until
-            // we get to the first node
-            while (node.getParent() != null) {
-                closestGridToPlayer = node.getPosition();
-                node = node.getParent();
-            }
-        }
-
-        return closestGridToPlayer;
+        return foundPlayer;
     }
 
     private double enemyProbability(PathInformation plan, StateObservation stateObs) {
