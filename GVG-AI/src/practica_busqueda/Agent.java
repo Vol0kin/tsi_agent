@@ -164,8 +164,7 @@ public class Agent extends BaseAgent{
         
         last_x = jugador.getX();
         last_y = jugador.getY();
-        
-        
+
         if (!plan_no_morir.isEmpty()){ // Si tengo acciones del plan para no morir, las ejecuto y termino el act
             it++;
             System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
@@ -2041,7 +2040,8 @@ public class Agent extends BaseAgent{
         PlayerObservation nextPlayerPos = this.getPlayer(forwardState);
 
         // Create constant expressions
-        final ObservationType EMPTY = ObservationType.EMPTY;
+        final ObservationType EMPTY = ObservationType.EMPTY,
+                              PLAYER = ObservationType.PLAYER;
         final int XMAX = grid.length, YMAX = grid[0].length;
 
         // Create new explored map
@@ -2088,7 +2088,8 @@ public class Agent extends BaseAgent{
                     int x = obs.getX(), y = obs.getY();
 
                     // Add neighbor if it hasn't been explored
-                    if (!exploredMap[x][y] && obs.getType().equals(EMPTY)) {
+                    // Only neighbors which are empty or the player position are added
+                    if (!exploredMap[x][y] && (obs.getType().equals(EMPTY) || obs.getType().equals(PLAYER))) {
                         openList.addLast(new GridNode(obs, currentNode));
                         exploredMap[x][y] = true;
                     }
@@ -2107,6 +2108,7 @@ public class Agent extends BaseAgent{
             // we get to the first node
             while (node.getParent() != null) {
                 closestGridToPlayer = node.getPosition();
+                node = node.getParent();
             }
         }
 
