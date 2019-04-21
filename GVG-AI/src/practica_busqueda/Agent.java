@@ -360,55 +360,35 @@ public class Agent extends BaseAgent{
         // <<Parte reactiva>>
         // Ya he elegido la acción. Ahora veo si se puede ejecutar
      
-        StateObservation estado_avanzado = stateObs.copy();
-        estado_avanzado.advance(informacionPlan.plan.peekFirst()); // Siguiente estado del juego (en el siguiente turno)  
-        PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado); // Jugador el siguiente turno
-        
-        if (informacionPlan.plan.size() >= 2)
-            estado_avanzado.advance(informacionPlan.plan.get(1)); // Estado del juego dentro de dos turnos
-        
-        PlayerObservation jugador_sig2_estado = this.getPlayer(estado_avanzado); // Jugador dentro de 2 turnos o dentro de 1 si el plan solo tiene una acción
-        
-        
-        // <Ver si muere>
-        
         int jug_x = jugador.getX();
         int jug_y = jugador.getY();
         Orientation jug_orient = jugador.getOrientation();
         ArrayList<Observation> [][] grid = this.getObservationGrid(stateObs);
         
         // Veo si hay algún enemigo peligroso: veo si el camino del jugador estará conectado con el
-        // de algún enemigo tras ejecutar la acción
-        
-            /*
-            ArrayList<Observation> enemigos = new ArrayList<>(); // Meto todos los enemigos en un array para más comodidad
-            enemigos.addAll(this.getBatsList(stateObs));
-            enemigos.addAll(this.getScorpionsList(stateObs));
-            
-            for (Observation enemigo : enemigos)
-                if (this.getHeuristicDistance(jugador, enemigo) <= 2)
-                    enemigos_cercanos = true;*/
-            
-        boolean enemigos_cercanos = false;    
+        // de algún enemigo tras ejecutar la acción   
             
         // Obtengo los enemigos relativamente cercanos al jugador -> dist_manhattan <= 6
         ArrayList<Observation> enemigos = new ArrayList<>();
-        enemigos.addAll(this.getBatsList(stateObs));
-        enemigos.addAll(this.getScorpionsList(stateObs));
-        Observation enem_act1;
+        ArrayList<Observation> bats = this.getBatsList(stateObs);
+        ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
         
-        for (int i = 0; i < enemigos.size(); i++){
-            enem_act1 = enemigos.get(i);
-            
-            if (jugador.getManhattanDistance(enem_act1) > 6)
-                enemigos.remove(i);
+        for (Observation bat : bats){
+            if (jugador.getManhattanDistance(bat) <= 6)
+                enemigos.add(bat);
+        }
+        
+        for (Observation scorpion : scorpions){
+            if (jugador.getManhattanDistance(scorpion) <= 6)
+                enemigos.add(scorpion);
         }
                 
-        // Veo aquellos enemigos cuyo camino estará conectado al del agente 
-        // y se encuentran lo suficientemente cerca como para ser un peligro
+        // Veo si hay algún enemigo que sea un peligro
         Observation salida_connected;
+                    
+        boolean enemigos_cercanos = false; 
             
-        for(int i = 0; i < enemigos.size(); i++){
+        for(int i = 0; i < enemigos.size() && !enemigos_cercanos; i++){
             salida_connected = connectionToEnemy(stateObs, accion, enemigos.get(i), jugador);
             
             if (salida_connected.getX() == -1){ // El camino del enemigo está conectado al del jugador
@@ -416,12 +396,14 @@ public class Agent extends BaseAgent{
                 if (jugador.getManhattanDistance(enemigos.get(i)) <= 4){ // Veo que esté a una distancia manhattan de 4 o menos -> si no, no es un peligro y no lo tengo en cuenta
                     enemigos_cercanos = true;
                 }
+                
+                System.out.println("Enemigo " + enemigos.get(i) + " conectado!");
             }
-
         }
                
         if (enemigos_cercanos){ // La siguiente accion pone al jugador en peligro -> veo si hay alguna acción mejor
-            plan_no_morir.clear();
+            System.out.println("ENEMIGOS CERCANOS");
+            
             // Casillas posibles a la que ir -> arriba, abajo, derecha o izquierda
             
             // Veo qué casillas son válidas -> si voy a ella no voy a morir por una roca
@@ -506,11 +488,12 @@ public class Agent extends BaseAgent{
                 // De aquellas casillas válidas, veo la distancia al enemigo más cercano
                 // al que esa casilla esté conectada. Si no está conectada a ningún enemigo
                 // su distancia valdrá 1000
-                int[] dist_cas_enem = new int[casillas_validas.size()];
+                int num_casillas_validas = casillas_validas.size();
+                int[] dist_cas_enem = new int[num_casillas_validas];
                 int min_dist;
                 int this_dist;
                 
-                for (int i = 0; i < casillas_validas.size(); i++){
+                for (int i = 0; i < num_casillas_validas; i++){
                     Observation this_casilla = casillas_validas.get(i);
                     PlayerObservation jugador_connection;
                     PlayerObservation jugador_tras_accion;
@@ -556,268 +539,118 @@ public class Agent extends BaseAgent{
                     dist_cas_enem[i] = min_dist;
                 }
                 
-                // Escojo la casilla que más me acerque a mi objetivo si su min_dist > 4
-                // Si no, escojo cualquiera que tenga min_dist > 4
-                // Si todas tienen min_dist <= 4, escojo la de mayor min_dist
+                // Si hay casillas con dist_cas_enem > 4, escojo la más cercana al objetivo
+                // Si no, escojo la casilla con mayor dist_cas_enem
                 
+                boolean casilla_ya_elegida = false;
+                Observation casilla_elegida = casillas_validas.get(0); // Casilla por defecto
+                
+                
+                // Calculo la distancia de cada casilla al objetivo (x_search, y_search)
+                Observation obs_objetivo = new Observation(x_search, y_search, ObservationType.EXIT);
+                int[] dist_cas_obj = new int[num_casillas_validas];
+                
+                for (int i = 0; i < num_casillas_validas; i++)
+                    dist_cas_obj[i] = obs_objetivo.getManhattanDistance(casillas_validas.get(i));
+                
+                
+                // Veo si hay casillas con dist_cas_enem > 4
+                int min_dist_obj = 10000;
+                int ind_min_dist_obj = -1;
+
+                for (int i = 0; i < num_casillas_validas; i++){
+                    if (dist_cas_enem[i] > 4){
+                        if (dist_cas_obj[i] < min_dist_obj){
+                            min_dist_obj = dist_cas_obj[i];
+                            ind_min_dist_obj = i;
+                        }
+                    }  
+                }
+                
+                if (ind_min_dist_obj != -1){
+                    casilla_ya_elegida = true;
+                    casilla_elegida = casillas_validas.get(ind_min_dist_obj);
+                }
+                
+                // Si no hay casillas con dist_cas_enem > 4, escojo la que tenga mayor dist_cas_enem
+                
+                if (!casilla_ya_elegida){
+                    int max_dist_enem = -1;
+                    int ind_max_dist_enem = -1;
+                    
+                    for (int i = 0; i < num_casillas_validas; i++){
+                        if (dist_cas_enem[i] > max_dist_enem){
+                            max_dist_enem = dist_cas_enem[i];
+                            ind_max_dist_enem = i;
+                        }
+                    }
+                    
+                    casilla_elegida = casillas_validas.get(ind_max_dist_enem);
+                    casilla_ya_elegida = true;
+                }
+                
+                // Ahora transformo la casilla elegida en acciones en plan_no_morir para llegar a ella
+                plan_no_morir.clear();
+                hay_que_replanificar = true;
+                
+                // Veo la posición de la casilla_elegida
+                if (casilla_elegida.getX() > jug_x){ // Derecha
+                    plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
+                    
+                    if (jug_orient != Orientation.E)
+                        plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
+                }
+                else if (casilla_elegida.getX() < jug_x){ // Izquierda
+                    plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
+                    
+                    if (jug_orient != Orientation.W)
+                        plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
+                }
+                else{
+                    if (casilla_elegida.getY() < jug_y){ // Arriba
+                        plan_no_morir.add(Types.ACTIONS.ACTION_UP);
+                    
+                        if (jug_orient != Orientation.N)
+                            plan_no_morir.add(Types.ACTIONS.ACTION_UP);
+                    }
+                    else{ // Abajo
+                        plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);
+                    
+                        if (jug_orient != Orientation.S)
+                            plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);  
+                    }
+                }
+            }
+            else{ // Si no hay casillas válidas, no hago nada
+                enemigos_cercanos = false;
             }
         }
         
+        // Veo si el jugador va a morir en los siguientes 2 turnos. Si enemigos_cercanos = true,
+        // cojo las acciones del plan no_morir para ver si moriría. Si vale false, cojo
+        // las acciones del plan normal
         
-        // AÑADIR HAY_QUE_PLANIFICAR = TRUE SI AÑADO ACCIONES A PLAN_NO_MORIR!!!!
-        // EJECUTAR TAMBIÉN LA PREDICCIÓN PARA VER SI ME VA A MATAR LAS ACCIONES ELEGIDAS!!!
+        StateObservation estado_avanzado = stateObs.copy();
         
-                
-                
-                
-                
-            
-            
-            if (enemigos_cercanos){ // Hay enemigos cercanos. También puede haber rocas cayendo! (no se sabe la causa de la muerte)
-                System.out.println("ENEMIGOS CERCANOS");
-                Observation obs_pos;
-                boolean casilla_encontrada = false;
-                boolean casilla_valida;
-                int x_casilla, y_casilla;
-                ArrayList<Observation> casillas_validas = new ArrayList<>();
-                
-                // Escojo la casilla adyacente más cercana a mi objetivo que no esté cerca de un enemigo
-                // Esta casilla no puede ser un muro ni una roca ni tener una roca encima
-                
-                boolean repetir = true;
-                int umbral_dist;
-                
-                // Intento encontrar una casilla válida con dist manhattan > 2 para todos los enemigos
-                // Si no es posible, lo intento para una distancia de 1
-                for (int repeticion = 0; repeticion < 2 && repetir; repeticion++){
-                    
-                    if (repeticion == 0)
-                        umbral_dist = 2;
-                    else
-                        umbral_dist = 1;
-
-                    // Arriba
-
-                    casilla_valida = true;
-                    x_casilla = jug_x;
-                    y_casilla = jug_y-1;
-                    obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
-
-                    // Compruebo que no sea un muro, roca ni tenga una roca encima
-                    if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
-                            || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
-                        casilla_valida = false;
-
-                    if (casilla_valida && y_casilla-1 >= 0)
-                        if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
-                            casilla_valida = false;
-
-                    if (casilla_valida)
-                        for (Observation enemigo : enemigos) // Veo si está alejada de los enemigos
-                            if (obs_pos.getManhattanDistance(enemigo) <= umbral_dist)
-                                casilla_valida = false;
-
-                    if (casilla_valida)
-                        casillas_validas.add(obs_pos);
-
-                    // Derecha
-
-                    casilla_valida = true;
-                    x_casilla = jug_x+1;
-                    y_casilla = jug_y;
-                    obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
-
-                    // Compruebo que no sea un muro, roca ni tenga una roca encima
-                    if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
-                            || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
-                        casilla_valida = false;
-
-                    if (casilla_valida)
-                        if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
-                            casilla_valida = false;
-
-                    if (casilla_valida)
-                        for (Observation enemigo : enemigos) // Veo si está alejada de los enemigos
-                            if (obs_pos.getManhattanDistance(enemigo) <= umbral_dist)
-                                casilla_valida = false;
-
-                    if (casilla_valida)
-                        casillas_validas.add(obs_pos);
-
-                    // Izquierda
-
-                    casilla_valida = true;
-                    x_casilla = jug_x-1;
-                    y_casilla = jug_y;
-                    obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
-
-                    // Compruebo que no sea un muro, roca ni tenga una roca encima
-                    if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
-                            || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
-                        casilla_valida = false;
-
-                    if (casilla_valida)
-                        if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
-                            casilla_valida = false;
-
-                    if (casilla_valida)
-                        for (Observation enemigo : enemigos) // Veo si está alejada de los enemigos
-                            if (obs_pos.getManhattanDistance(enemigo) <= umbral_dist)
-                                casilla_valida = false;
-
-                    if (casilla_valida)
-                        casillas_validas.add(obs_pos);
-
-                    // Abajo
-
-                    casilla_valida = true;
-                    x_casilla = jug_x;
-                    y_casilla = jug_y+1;
-                    obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
-
-                    // Compruebo que no sea un muro ni roca
-                    if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
-                            || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
-                        casilla_valida = false;
-
-                    if (casilla_valida)
-                        for (Observation enemigo : enemigos) // Veo si está alejada de los enemigos
-                            if (obs_pos.getManhattanDistance(enemigo) <= umbral_dist)
-                                casilla_valida = false;
-
-                    if (casilla_valida)
-                        casillas_validas.add(obs_pos);
-
-
-                    if (casillas_validas.isEmpty()) 
-                        repetir = true;
-                    else
-                        repetir = false;    
-                }
-                
-                
-                if (casillas_validas.isEmpty()){
-                    System.out.println("NO CASILLA VALIDAS");
-                    plan_no_morir = new LinkedList<>();
-                    plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                }
-                else{
-                    // Elijo la casilla válida más cercana a mi objetivo
-                    Observation casilla_elegida = new Observation(-1, -1, ObservationType.EXIT);
-                    StateObservation estado_casilla;
-                    boolean ha_muerto;
-                    boolean buscar_otra = true;
-                    boolean casilla_valida_encontrada = false;
-                    Observation obs_search = new Observation(x_search, y_search, ObservationType.EXIT);
-                    int this_dist;
-                    int min_dist_casilla;
-                    int min_dist_ind;
-                    int cas_val_num;
-                    
-                    
-                    while (buscar_otra && !casillas_validas.isEmpty()){
-                        min_dist_casilla = 10000;
-                        min_dist_ind = 0;
-                        cas_val_num = casillas_validas.size();  
-
-                        for (int k = 0; k < cas_val_num; k++){
-                            this_dist = casillas_validas.get(k).getManhattanDistance(obs_search);
-
-                            if (this_dist < min_dist_casilla){
-                                min_dist_casilla = this_dist;
-                                min_dist_ind = k;
-                            }
-                        }
-
-                        // En función de esa casilla (y la orientación actual del jugador)
-                        // añado las acciones necesarias para ir a esa casilla
-
-                        casilla_elegida = casillas_validas.get(min_dist_ind);
-
-                        int x_dif = casilla_elegida.getX() - jug_x;
-                        int y_dif = casilla_elegida.getY() - jug_y;
-
-                        plan_no_morir = new LinkedList<>();
-
-                        // Casilla arriba
-
-                        if (x_dif == 0 && y_dif == -1){
-                            plan_no_morir.add(Types.ACTIONS.ACTION_UP);
-
-                            if (jug_orient != Orientation.N)
-                                plan_no_morir.add(Types.ACTIONS.ACTION_UP);
-                        }
-                        // Casilla abajo
-                        else if (x_dif == 0 && y_dif == 1){
-                            plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);
-
-                            if (jug_orient != Orientation.S)
-                                plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);
-                        }
-
-                        // Casilla derecha
-                        else if (x_dif == 1 && y_dif == 0){
-                            plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
-
-                            if (jug_orient != Orientation.E)
-                                plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
-                        }
-
-                        // Casilla izquierda
-                        else if (x_dif == -1 && y_dif == 0){
-                            plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
-
-                            if (jug_orient != Orientation.W)
-                                plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
-                        }
-
-                        // Caída rocas -> veo si esas acciones provocan la muerte del jugador
-                        // Si es así, cojo otra casilla válida
-                        // Si no quedan casillas válidas, devuelvo un plan con la acción NIL
-
-                        estado_casilla = stateObs.copy();
-                        ha_muerto = false;
-
-                        estado_casilla.advance(plan_no_morir.get(0));
-
-                        if (this.getPlayer(estado_casilla).hasDied())
-                            ha_muerto = true;
-                        else if (plan_no_morir.size() > 1){
-                            estado_casilla.advance(plan_no_morir.get(1));
-
-                            if (this.getPlayer(estado_casilla).hasDied())
-                                ha_muerto = true;
-                        }
-
-                        if (ha_muerto){ // Si el jugador muere, elijo otra casilla
-                            buscar_otra = true;
-                            casillas_validas.remove(casilla_elegida); // La quito para que no se vuelva a elegir
-                        }
-                        else{
-                            buscar_otra = false;
-                            casilla_valida_encontrada = true;
-                        }
-                    }
-                    
-                    if (!casilla_valida_encontrada){ // Si no se encuentra una casilla válida, se queda quieto
-                        System.out.println("NO CASILLA VALIDA ENCONTRADA 2");
-                        plan_no_morir = new LinkedList<>();
-                        plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                    }
-                    
-                    System.out.println("CASILLA ELEGIDA:" + casilla_elegida);
-                       
-                }
-                
-                System.out.println("ACCION POR ENEMIGOS: " + plan_no_morir.peekFirst());
-                if (!plan_no_morir.isEmpty())
-                    return plan_no_morir.pollFirst();
-            }
+        LinkedList<Types.ACTIONS> plan_usado;
+        
+        if(!enemigos_cercanos)
+            plan_usado = informacionPlan.plan;
+        else
+            plan_usado = plan_no_morir;
         
         
-        // Veo si el jugador va a morir en los siguientes 2 turnos
+        estado_avanzado.advance(plan_usado.get(0)); // Siguiente estado del juego (en el siguiente turno)  
+
+        PlayerObservation jugador_sig_estado = this.getPlayer(estado_avanzado); // Jugador el siguiente turno
         
-        // BUG: Si el jugador abandona el nivel es como si hubiera muerto!!! (su "x" también vale -1)
+        if (plan_usado.size() >= 2)
+            estado_avanzado.advance(plan_usado.get(1)); // Estado del juego dentro de dos turnos
+        
+        PlayerObservation jugador_sig2_estado = this.getPlayer(estado_avanzado); // Jugador dentro de 2 turnos o dentro de 1 si el plan solo tiene una acción
+        
+        
+        // Si el jugador abandona el nivel es como si hubiera muerto!!! (su "x" también vale -1)
         boolean bug_morir = false;
         
         if (jugador.getManhattanDistance(this.getExit(stateObs)) <= 1)
@@ -828,8 +661,19 @@ public class Agent extends BaseAgent{
                 bug_morir = true;
         }
         
-        if (!enemigos_cercanos && !bug_morir && (jugador_sig_estado.hasDied() || jugador_sig2_estado.hasDied()) ){ // Va a morir y no es por un enemigo -> es por una roca
+        boolean condicion_ejec_parte_rocas = !bug_morir && (jugador_sig_estado.hasDied() || jugador_sig2_estado.hasDied());
+        
+        if (!condicion_ejec_parte_rocas){ // Si no se ejecuta la parte de las rocas, devuelvo ya la acción del plan_no_morir (si no está vacío)
+            if (!plan_no_morir.isEmpty()){
+                it++;
+                return plan_no_morir.pollFirst();
+            }
+        }
+        
+        
+        if (condicion_ejec_parte_rocas){ // Va a morir y no es por un enemigo -> es por una roca
             System.out.println("Va a morir! - it: " + it);
+            System.out.println(plan_usado.get(0));
             System.out.println(accion);
             
             // Si va a morir ejecuto las acciones necesarias para sobrevivir y después vuelvo a la casilla donde estaba y sigo ejecutando el plan
@@ -866,7 +710,7 @@ public class Agent extends BaseAgent{
                 System.out.println("MUERTE POR ROCA");
                 
                 StateObservation estado_prueba;
-                plan_no_morir = new LinkedList<>();
+                plan_no_morir.clear();
                 boolean va_a_morir;
                 
                 // Pruebo primero a quedarme quieto si no me está cayendo una roca encima
@@ -1008,7 +852,7 @@ public class Agent extends BaseAgent{
             
             return plan_no_morir.pollFirst();
         }
-        else if (!bug_morir && accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
+        else if (!enemigos_cercanos && !bug_morir && accion != Types.ACTIONS.ACTION_NIL){ // No va a morir en el siguiente turno y la acción no es quedarse quieto
             
             // <Choque con rocas>
             // Veo si la acción tiene el resultado esperado o se va a chocar con una roca que está cayendo
