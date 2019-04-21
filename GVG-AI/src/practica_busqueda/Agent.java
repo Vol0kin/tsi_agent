@@ -1339,7 +1339,6 @@ public class Agent extends BaseAgent{
 
                         // Skip nextPosition if its contained in ignoreList
                         if (ignoreList != null && ignoreList.contains(nextPosition)) {
-                            System.out.println("IGNORE LIST");
                             continue;
                         }
 
@@ -1649,7 +1648,6 @@ public class Agent extends BaseAgent{
 
                         // Skip nextPosition if its contained in ignoreList
                         if (ignoreList != null && ignoreList.contains(nextPosition)) {
-                            System.out.println("IGNORE LIST");
                             continue;
                         }
 
@@ -1952,7 +1950,6 @@ public class Agent extends BaseAgent{
 
                         // Skip nextPosition if its contained in ignoreList
                         if (ignoreList != null && ignoreList.contains(nextPosition)) {
-                            System.out.println("IGNORE LIST");
                             continue;
                         }
 
@@ -2027,7 +2024,95 @@ public class Agent extends BaseAgent{
 
         return plan;
     }
-    
+
+    private Observation connectionToEnemy(StateObservation stateObs, Types.ACTIONS action, Observation enemy, PlayerObservation player) {
+
+        // Initialize closest grid to player to (-1, -1), in case the path is conected
+        Observation closestGridToPlayer = new Observation(-1, -1, ObservationType.EMPTY);
+
+        // Copy the stateObs and apply the given action
+        StateObservation forwardState = stateObs.copy();
+        forwardState.advance(action);
+
+        // Get grid after applying the given action
+        ArrayList<Observation>[][] grid = this.getObservationGrid(forwardState);
+
+        // Get next player position
+        PlayerObservation nextPlayerPos = this.getPlayer(forwardState);
+
+        // Create constant expressions
+        final ObservationType EMPTY = ObservationType.EMPTY;
+        final int XMAX = grid.length, YMAX = grid[0].length;
+
+        // Create new explored map
+        boolean[][] exploredMap = new boolean[XMAX][YMAX];
+
+        for (int x = 0; x < XMAX; x++) {
+            for (int y = 0; y < YMAX; y++) {
+                exploredMap[x][y] = false;
+            }
+        }
+
+        exploredMap[enemy.getX()][enemy.getY()] = true;
+
+        // Set boolean variable to check if the player has been found
+        boolean foundPlayer = false;
+
+        // Create new list of opened and closed observations
+        LinkedList<GridNode> openList = new LinkedList<>();
+        LinkedList<GridNode> closedList = new LinkedList<>();
+
+        // Add enemy position
+        openList.addFirst(new GridNode(enemy, null));
+
+        // Set variables used in search
+        GridNode currentNode;
+        Observation currentObservation;
+
+        // Search for the player
+        while (!foundPlayer && !openList.isEmpty()) {
+            // Get current node, observation and position
+            currentNode = openList.pollFirst();
+            currentObservation = currentNode.getPosition();
+            int currentX = currentObservation.getX(), currentY = currentObservation.getY();
+
+            // Finish if the player has been found
+            if (currentX == nextPlayerPos.getX() && currentY == nextPlayerPos.getY()) {
+                foundPlayer = true;
+            } else {
+                // Get neighbors
+                ArrayList<Observation> nextGrids = getNeighbours(currentObservation, grid);
+
+                // Iterate over each neighbor
+                for (Observation obs: nextGrids) {
+                    int x = obs.getX(), y = obs.getY();
+
+                    // Add neighbor if it hasn't been explored
+                    if (!exploredMap[x][y] && obs.getType().equals(EMPTY)) {
+                        openList.addLast(new GridNode(obs, currentNode));
+                        exploredMap[x][y] = true;
+                    }
+                }
+            }
+
+            closedList.addFirst(currentNode);
+        }
+
+        // If the player has been found, the path must be recreated in order
+        // to get the closest enemy grid to the player
+        if (foundPlayer) {
+            GridNode node = closedList.getFirst();
+
+            // Iterate over the nodes and get their observation until
+            // we get to the first node
+            while (node.getParent() != null) {
+                closestGridToPlayer = node.getPosition();
+            }
+        }
+
+        return closestGridToPlayer;
+    }
+
     private double enemyProbability(PathInformation plan, StateObservation stateObs) {
         // Asociar pares enemigo:probabilidad
         Map<Observation, Double> probabilidadesEnemigos = new HashMap<>();
@@ -2922,9 +3007,9 @@ public class Agent extends BaseAgent{
         for (int this_x = 0; this_x < ancho; this_x++)
             for (int this_y = 0; this_y < alto; this_y++){
                 if (matrix_cas_prob[this_x][this_y] == true)
-                    casillas_prohibidas.add(new Observation(this_x, this_y, ObservationType.WALL));
+                    casillas_prohibidas.add(new Observation(this_x, this_y, grid[this_x][this_y].get(0).getType()));
             }
-        
+
         return casillas_prohibidas;
     }
     

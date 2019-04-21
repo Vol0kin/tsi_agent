@@ -19,6 +19,23 @@ class GridNode {
     private int remainingGems;
     private ArrayList<Observation> gemsList;
 
+    GridNode(Observation position, GridNode parent) {
+        this.position = position;
+        this.parent = parent;
+
+        this.gCost = 0;
+        this.hCost = 0;
+        this.fCost = 0;
+        this.actionList = null;
+        this.orientation = null;
+        this.boulderIndex = 0;
+        this.groundMap = null;
+        this.gemsMap = null;
+        this.forbidAboveGrid = false;
+        this.remainingGems = 0;
+        this.gemsList = null;
+    }
+
     GridNode(int gCost, int hCost, LinkedList<Types.ACTIONS> actionList,
              Observation position, Orientation orientation, int boulderIndex,
              boolean[][] groundMap, boolean[][] gemsMap, boolean forbidAboveGrid,
