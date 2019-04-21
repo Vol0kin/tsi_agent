@@ -526,7 +526,7 @@ public class Agent extends BaseAgent{
                     
                     for (Observation enemigo : enemigos){
                         caminos_conectados = connectionToEnemy(stateObs, accion_connection, enemigo, jugador_connection);
-                        
+
                         if (caminos_conectados){ // El camino del enemigo está conectado al del jugador
                             this_dist = jugador_tras_accion.getManhattanDistance(enemigo);
                             
@@ -2119,7 +2119,7 @@ public class Agent extends BaseAgent{
         }
 
         // Get next position
-        Observation nextPlayerPos = grid[xPlayer][yPlayer].get(0);
+        Observation nextPlayerPos = new Observation(xPlayer, yPlayer, ObservationType.EMPTY);
 
         if(nextPlayerPos.getX() == enemy.getX() && nextPlayerPos.getY() == enemy.getY())
             return true;
@@ -2174,7 +2174,7 @@ public class Agent extends BaseAgent{
 
                     // Add neighbor if it hasn't been explored
                     // Only neighbors which are empty or the player position are added
-                    if (!exploredMap[x][y] && (obs.getType().equals(EMPTY) || obs.getType().equals(PLAYER))) {
+                    if (!exploredMap[x][y] && (obs.getType().equals(EMPTY) || (x == xPlayer && y == yPlayer))) {
                         openList.addLast(new GridNode(obs, currentNode));
                         exploredMap[x][y] = true;
                     }
@@ -2183,6 +2183,7 @@ public class Agent extends BaseAgent{
 
             closedList.addFirst(currentNode);
         }
+        System.out.println(foundPlayer + " " + enemy + " " + player + " " + nextPlayerPos + " " + action);
 
 
         return foundPlayer;
