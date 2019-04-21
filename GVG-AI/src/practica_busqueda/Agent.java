@@ -59,6 +59,10 @@ public class Agent extends BaseAgent{
     
     private ArrayList<Observation> gemas_no_accesibles; // Array de aquellas gemas de clústers a los que no se ha conseguido llegar
     
+    private boolean ignorar_cas_prob_clusters = false; // Vale true cuando no es posible llegar a ningún clúster sin pasar a través de un enemigo
+    
+    private boolean ignorar_cas_prob_salida = false; // Vale true cuando no se encuentra un camino hacia la salida sin pasar a través de un enemigo
+    
     // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
@@ -136,10 +140,10 @@ public class Agent extends BaseAgent{
             if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida entre este clúster y el siguiente
                 informacionPlan = pathExplorer(x_search, y_search,
                                          so, gems_search,
-                                         elapsedTimer, 4, casillas_prohibidas);
+                                         elapsedTimer, 1, casillas_prohibidas);
             else
                 informacionPlan = pathExplorer(so, gems_search,
-                                         elapsedTimer, 4, casillas_prohibidas);
+                                         elapsedTimer, 1, casillas_prohibidas);
             
             
             
@@ -154,8 +158,18 @@ public class Agent extends BaseAgent{
         Types.ACTIONS accion = Types.ACTIONS.ACTION_NIL; // Acción que se va a ejecutar este turno
         
         // Obtengo este turno las casillas prohibidas (cada turno los enemigos pueden cambiar de posición)
-        ArrayList<Observation> casillas_prohibidas = this.getCasillasProhibidas(stateObs);
-        ArrayList<Observation> casillas_prohibidas_exit = this.getCasillasProhibidas(stateObs, salida);
+        ArrayList<Observation> casillas_prohibidas;
+        ArrayList<Observation> casillas_prohibidas_exit;
+        
+        if (!ignorar_cas_prob_clusters)
+            casillas_prohibidas = this.getCasillasProhibidas(stateObs);
+        else
+            casillas_prohibidas = new ArrayList<>();
+        
+        if (!ignorar_cas_prob_salida)
+            casillas_prohibidas_exit = this.getCasillasProhibidas(stateObs, salida);
+        else
+            casillas_prohibidas_exit = new ArrayList<>();
         
         // Compruebo si al aplicar la última acción nos hemos movido de casilla
         
@@ -183,19 +197,25 @@ public class Agent extends BaseAgent{
             informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
             //System.out.println("Plan: " + informacionPlan.plan);
             
-            informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+            //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+            
+            if (!informacionPlan.existsPath){
+                ignorar_cas_prob_salida = true; // Ya no tengo en cuenta las casillas prohibidas 
+                casillas_prohibidas_exit.clear();
+            }
         }
         
         if (!hay_que_replanificar && it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
             informacionPlan = pathExplorer(x_search, y_search,
                     stateObs, gems_search,
-                    elapsedTimer, 4, casillas_prohibidas);
+                    elapsedTimer, 6, casillas_prohibidas);
         }
 
         
         // Si no ha encontrado un camino, tengo que volver a planificar
         if (informacionPlan.searchComplete && !informacionPlan.existsPath){
             hay_que_replanificar = true;
+            accion = Types.ACTIONS.ACTION_NIL;
             System.out.println("No existe camino - it: " + it);
                 
             // Clúster -> no puedo coger ese clúster, lo elimino (le queden o no gemas) y vuelvo a crear otro circuito 
@@ -209,6 +229,9 @@ public class Agent extends BaseAgent{
                 gemas_actuales.removeAll(gemas_no_accesibles);
                 
                 if (gemas_actuales.size() == 0){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
+                    ignorar_cas_prob_clusters = true; // Ya no tengo en cuenta las casillas prohibidas 
+                    casillas_prohibidas.clear();
+                    
                     gemas_no_accesibles.clear();
                     gemas_actuales = this.getGemsList(stateObs);
                 }
@@ -238,7 +261,7 @@ public class Agent extends BaseAgent{
                 Observation salida_nivel = this.getExit(stateObs);
                 
                 informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
-                informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+                //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
             }
             
             else{ // Planifico para coger las gemas del clúster o ir al punto intermedio con el siguiente
@@ -251,7 +274,7 @@ public class Agent extends BaseAgent{
 
                     informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 4, casillas_prohibidas);
+                                             elapsedTimer, 6, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -261,9 +284,9 @@ public class Agent extends BaseAgent{
                     }
                 }
                 else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
-                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1, casillas_prohibidas);
+                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
 
-                    informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+                    //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
                 }
             }
         }
@@ -276,10 +299,21 @@ public class Agent extends BaseAgent{
                 System.out.println(informacionPlan.plan);
                 
                 if (sig_cluster+1 >= clusterInf.circuito.size()){ // Me daría outOfBounds exception porque ya no hay ningún clúster más del circuito
-                    informacionPlan.searchComplete = false;
                     hay_que_replanificar = true;
-                    it++;
-                    return Types.ACTIONS.ACTION_NIL;
+                    
+                    // Vuelvo a crear los clusters
+                    clusterInf.createClusters(3, this.getGemsList(stateObs),
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs),
+                    this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
+
+                    this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+                    this.saveCircuit(clusterInf, jugador.getX(),
+                    jugador.getY(), salida.getX(),
+                    salida.getY(), this.getRemainingGems(stateObs)); // Creo el camino a través de los clústeres
+
+                    sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
+                    
+                    accion = Types.ACTIONS.ACTION_NIL;
                 }
                 else{    
                     sig_cluster++;
@@ -303,10 +337,10 @@ public class Agent extends BaseAgent{
                     if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
                         informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 4, casillas_prohibidas);
+                                             elapsedTimer, 6, casillas_prohibidas);
                     else // Si no, le dejo que termine en cualquier gema
                         informacionPlan = pathExplorer(stateObs, gems_search,
-                                             elapsedTimer, 4, casillas_prohibidas);
+                                             elapsedTimer, 6, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -319,6 +353,9 @@ public class Agent extends BaseAgent{
                 accion = informacionPlan.plan.peekFirst();
             }
         }
+        
+        if (informacionPlan.plan.isEmpty())
+            return Types.ACTIONS.ACTION_NIL;
         
         // <<Parte reactiva>>
         // Ya he elegido la acción. Ahora veo si se puede ejecutar
@@ -340,17 +377,200 @@ public class Agent extends BaseAgent{
         Orientation jug_orient = jugador.getOrientation();
         ArrayList<Observation> [][] grid = this.getObservationGrid(stateObs);
         
-        // Veo si tiene a algún enemigo demasiado cerca
+        // Veo si hay algún enemigo peligroso: veo si el camino del jugador estará conectado con el
+        // de algún enemigo tras ejecutar la acción
         
-            boolean enemigos_cercanos = false;
-            
+            /*
             ArrayList<Observation> enemigos = new ArrayList<>(); // Meto todos los enemigos en un array para más comodidad
             enemigos.addAll(this.getBatsList(stateObs));
             enemigos.addAll(this.getScorpionsList(stateObs));
             
             for (Observation enemigo : enemigos)
                 if (this.getHeuristicDistance(jugador, enemigo) <= 2)
+                    enemigos_cercanos = true;*/
+            
+        boolean enemigos_cercanos = false;    
+            
+        // Obtengo los enemigos relativamente cercanos al jugador -> dist_manhattan <= 6
+        ArrayList<Observation> enemigos = new ArrayList<>();
+        enemigos.addAll(this.getBatsList(stateObs));
+        enemigos.addAll(this.getScorpionsList(stateObs));
+        Observation enem_act1;
+        
+        for (int i = 0; i < enemigos.size(); i++){
+            enem_act1 = enemigos.get(i);
+            
+            if (jugador.getManhattanDistance(enem_act1) > 6)
+                enemigos.remove(i);
+        }
+                
+        // Veo aquellos enemigos cuyo camino estará conectado al del agente 
+        // y se encuentran lo suficientemente cerca como para ser un peligro
+        Observation salida_connected;
+            
+        for(int i = 0; i < enemigos.size(); i++){
+            salida_connected = connectionToEnemy(stateObs, accion, enemigos.get(i), jugador);
+            
+            if (salida_connected.getX() == -1){ // El camino del enemigo está conectado al del jugador
+                
+                if (jugador.getManhattanDistance(enemigos.get(i)) <= 4){ // Veo que esté a una distancia manhattan de 4 o menos -> si no, no es un peligro y no lo tengo en cuenta
                     enemigos_cercanos = true;
+                }
+            }
+
+        }
+               
+        if (enemigos_cercanos){ // La siguiente accion pone al jugador en peligro -> veo si hay alguna acción mejor
+            plan_no_morir.clear();
+            // Casillas posibles a la que ir -> arriba, abajo, derecha o izquierda
+            
+            // Veo qué casillas son válidas -> si voy a ella no voy a morir por una roca
+            
+            ArrayList<Observation> casillas_validas = new ArrayList<>();
+            boolean casilla_valida;
+            Observation obs_pos;
+            int x_casilla;
+            int y_casilla;
+            
+            // Arriba
+            // Veo si es válida -> no es una roca ni muro y no tiene una roca encima
+            casilla_valida = true;
+            x_casilla = jug_x;
+            y_casilla = jug_y-1;
+            obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
+
+            // Compruebo que no sea un muro, roca ni tenga una roca encima
+            if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
+                    || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
+                casilla_valida = false;
+
+            if (casilla_valida && y_casilla-1 >= 0)
+                if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
+                    casilla_valida = false;
+
+            if (casilla_valida)
+                casillas_validas.add(obs_pos);
+
+            // Abajo
+            casilla_valida = true;
+            x_casilla = jug_x;
+            y_casilla = jug_y+1;
+            obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
+
+            // Compruebo que no sea un muro ni roca
+            if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
+                    || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
+                casilla_valida = false;
+
+            if (casilla_valida)
+                casillas_validas.add(obs_pos);
+            
+            // Derecha
+            casilla_valida = true;
+            x_casilla = jug_x+1;
+            y_casilla = jug_y;
+            obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
+
+            // Compruebo que no sea un muro, roca ni tenga una roca encima
+            if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
+                    || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
+                casilla_valida = false;
+
+            if (casilla_valida)
+                if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
+                    casilla_valida = false;
+
+            if (casilla_valida)
+                casillas_validas.add(obs_pos);
+            
+            // Izquierda
+            casilla_valida = true;
+            x_casilla = jug_x-1;
+            y_casilla = jug_y;
+            obs_pos = new Observation(x_casilla, y_casilla, ObservationType.PLAYER);
+
+            // Compruebo que no sea un muro, roca ni tenga una roca encima
+            if (grid[x_casilla][y_casilla].get(0).getType() == ObservationType.WALL
+                    || grid[x_casilla][y_casilla].get(0).getType() == ObservationType.BOULDER)
+                casilla_valida = false;
+
+            if (casilla_valida)
+                if (grid[x_casilla][y_casilla-1].get(0).getType() == ObservationType.BOULDER)
+                    casilla_valida = false;
+
+            if (casilla_valida)
+                casillas_validas.add(obs_pos);
+
+            
+            if (!casillas_validas.isEmpty()){
+                // De aquellas casillas válidas, veo la distancia al enemigo más cercano
+                // al que esa casilla esté conectada. Si no está conectada a ningún enemigo
+                // su distancia valdrá 1000
+                int[] dist_cas_enem = new int[casillas_validas.size()];
+                int min_dist;
+                int this_dist;
+                
+                for (int i = 0; i < casillas_validas.size(); i++){
+                    Observation this_casilla = casillas_validas.get(i);
+                    PlayerObservation jugador_connection;
+                    PlayerObservation jugador_tras_accion;
+                    Types.ACTIONS accion_connection = Types.ACTIONS.ACTION_NIL;
+                    
+                    // Veo la posición de la casilla_valida
+                    if (this_casilla.getX() > jug_x){ // Derecha
+                        jugador_connection = new PlayerObservation(jug_x, jug_y, Orientation.E);
+                        jugador_tras_accion = new PlayerObservation(jug_x+1, jug_y, Orientation.E);
+                        accion_connection = Types.ACTIONS.ACTION_RIGHT;
+                    }
+                    else if (this_casilla.getX() < jug_x){ // Izquierda
+                        jugador_connection = new PlayerObservation(jug_x, jug_y, Orientation.W);
+                        jugador_tras_accion = new PlayerObservation(jug_x-1, jug_y, Orientation.W);
+                        accion_connection = Types.ACTIONS.ACTION_LEFT;
+                    }
+                    else{
+                        if (this_casilla.getY() < jug_y){ // Arriba
+                           jugador_connection = new PlayerObservation(jug_x, jug_y, Orientation.N);
+                           jugador_tras_accion = new PlayerObservation(jug_x, jug_y-1, Orientation.N);
+                           accion_connection = Types.ACTIONS.ACTION_UP; 
+                        }
+                        else{ // Abajo
+                           jugador_connection = new PlayerObservation(jug_x, jug_y, Orientation.S);
+                           jugador_tras_accion = new PlayerObservation(jug_x+1, jug_y+1, Orientation.S);
+                           accion_connection = Types.ACTIONS.ACTION_DOWN; 
+                        }
+                    }
+                    
+                    min_dist = 1000;
+                    
+                    for (Observation enemigo : enemigos){
+                        salida_connected = connectionToEnemy(stateObs, accion_connection, enemigo, jugador_connection);
+                        
+                        if (salida_connected.getX() == -1){ // El camino del enemigo está conectado al del jugador
+                            this_dist = jugador_tras_accion.getManhattanDistance(enemigo);
+                            
+                            if (this_dist < min_dist)
+                                min_dist = this_dist;
+                        }
+                    }
+                    
+                    dist_cas_enem[i] = min_dist;
+                }
+                
+                // Escojo la casilla que más me acerque a mi objetivo si su min_dist > 4
+                // Si no, escojo cualquiera que tenga min_dist > 4
+                // Si todas tienen min_dist <= 4, escojo la de mayor min_dist
+                
+            }
+        }
+        
+        
+        // AÑADIR HAY_QUE_PLANIFICAR = TRUE SI AÑADO ACCIONES A PLAN_NO_MORIR!!!!
+        // EJECUTAR TAMBIÉN LA PREDICCIÓN PARA VER SI ME VA A MATAR LAS ACCIONES ELEGIDAS!!!
+        
+                
+                
+                
+                
             
             
             if (enemigos_cercanos){ // Hay enemigos cercanos. También puede haber rocas cayendo! (no se sabe la causa de la muerte)
@@ -2630,123 +2850,6 @@ public class Agent extends BaseAgent{
         clust_inf.createCircuit(xStart, yStart, xGoal, yGoal, distClusterStart, distClusterGoal, needed_gems);
     }
 
-    // Se tiene que llamar después de saveCircuit
-    // No es método de ClusterInformation porque quiero usar getHeuristicDistance
-    // Guarda en clust_inf las gemas que funcionan como nodos del circuito
-    // Estos nodos (gemas) serán los puntos exactos que unirán los distintos
-    // clústeres. El pathExplorer sencillo (sin coger gemas) se lanzará
-    // entre el nodo de salida de un clúster y el nodo de entrada del siguiente clúster
-    // Algoritmo: voy recorriendo los clústeres del circuito y para cada pareja
-    // de clústeres contiguos (en el circuito) calculo la pareja de gemas más cercanas
-    // La gema del clúster i será el nodo de salida del clúster i y la gema del clúster
-    // i+1 en el circuito será el nodo de entrada del clúster i+1. Todos los clústeres
-    // tienen un nodo de salida y otro de entrada. El nodo de entrada del primer clúster
-    // se conecta con la casilla Start y el nodo de salida del último clúster con
-    // xGoal, yGoal
-    
-    private void saveCircuitNodes(ClusterInformation clust_inf, int xStart, int yStart, int xGoal, int yGoal){
-        ArrayList<Observation> gems;
-        int num_gems;
-        Observation gem_act;
-        int dist;
-        int min_dist;
-        int ind_min = -1;
-        
-        // Unión de Start con el primer clúster -> elijo la gema del primer clúster más cercana a start
-        gems = clust_inf.getGemsCircuitCluster(0);
-        min_dist = 10000;
-        num_gems = gems.size();
-        
-        for (int i = 0; i < num_gems; i++){ // Recorro las gemas del primer clúster del circuito
-            gem_act = gems.get(i);
-            dist = this.getHeuristicDistance(xStart, yStart, gem_act.getX(), gem_act.getY());
-            
-            if (dist < min_dist){
-                min_dist = dist;
-                ind_min = i;
-            }
-        }
-        
-        clust_inf.nodos_circuito = new ArrayList<>();
-        clust_inf.nodos_circuito.add(new Integer(ind_min));
-        
-        // Uniones de cada clúster con el siguiente, empezando por el clúster 0 -> parejas nodo_salida, nodo_entrada
-        int ind_min_1 = -1; // Indices del par de gemas más cercanas
-        int ind_min_2 = -1;
-        ArrayList<Observation> gems_1;
-        ArrayList<Observation> gems_2;
-        int num_gems_1;
-        int num_gems_2;
-        
-        
-        for (int k = 0; k < clust_inf.circuito.size()-1; k++){ // Recorro cada pareja de clústeres -> parejas: k con k+1
-            gems_1 = clust_inf.getGemsCircuitCluster(k);
-            gems_2 = clust_inf.getGemsCircuitCluster(k+1);
-            num_gems_1 = gems_1.size();
-            num_gems_2 = gems_2.size();
-            ind_min_1 = 0; // Intento no repetir gemas, pero si no hay más remedio (clúster de 1 sola gema), se escoge esa
-            min_dist = 10000;
-            Observation gem_1_act;
-            
-            if (num_gems_1 == 1){ // Si solo hay una gema tengo que escoger esa
-                for (int i = 0; i < num_gems_1; i++){ // Recorro las gemas del primer clúster
-                    gem_1_act = gems_1.get(i);
-
-                    for (int j = 0; j < num_gems_2; j++){ // Recorro las gemas del segundo clúster
-                        dist = this.getHeuristicDistance(gem_1_act.getX(), gem_1_act.getY(),
-                                gems_2.get(j).getX(), gems_2.get(j).getY());
-
-                        if (dist < min_dist){
-                            min_dist = dist;
-                            ind_min_2 = j;
-                            ind_min_1 = i;
-                        }
-                    }
-                }
-            }
-            else{
-                int ultimo_valor = clust_inf.nodos_circuito.get(clust_inf.nodos_circuito.size()-1);
-                
-                for (int i = 0; i < num_gems_1; i++){ // Recorro las gemas del primer clúster
-                    if (i != ultimo_valor){    
-                        gem_1_act = gems_1.get(i);
-
-                        for (int j = 0; j < num_gems_2; j++){ // Recorro las gemas del segundo clúster
-                            dist = this.getHeuristicDistance(gem_1_act.getX(), gem_1_act.getY(),
-                                    gems_2.get(j).getX(), gems_2.get(j).getY());
-
-                            if (dist < min_dist){
-                                min_dist = dist;
-                                ind_min_2 = j;
-                                ind_min_1 = i;
-                            }
-                        }
-                    }
-                }   
-            }
-            
-            clust_inf.nodos_circuito.add(ind_min_1);
-            clust_inf.nodos_circuito.add(ind_min_2);
-        }
-        
-        // Por último añado el nodo de salida del último clúster: lo uno con la casilla Goal
-        gems = clust_inf.getGemsCircuitCluster(clust_inf.circuito.size()-1); // obtengo las gemas del último clúster
-        min_dist = 10000;
-        num_gems = gems.size();
-        
-        for (int i = 0; i < num_gems; i++){ // Recorro las gemas del último clúster
-            gem_act = gems.get(i);
-            dist = this.getHeuristicDistance(xGoal, yGoal, gem_act.getX(), gem_act.getY());
-            
-            if (dist < min_dist){
-                min_dist = dist;
-                ind_min = i;
-            }
-        }
-        
-        clust_inf.nodos_circuito.add(new Integer(ind_min));
-    }
-  
     // Dados dos clústeres, devuelve un punto intermedio entre los dos que sea lo más "seguro" posible
     // Es decir, que si existe camino se pueda llegar a él
     // Algoritmo: busca un punto cercano a la casilla intermedia entre las dos gemas más cercanas de los
@@ -2970,12 +3073,19 @@ public class Agent extends BaseAgent{
     
     // Devuelve una lista de casillas (observaciones) que se corresponden con las casillas
     // donde hay enemigos y aquellas casillas a una dist. manhattan de 1 (arriba, abajo, derecha e izquierda)
+    // Si estas casillas adyacentes están libres, también se añaden sus adyacentes como casillas prohibidas
     // Este arraylist de observaciones se le pasará al A* después para que evite estas casillas
-    
+  
     private ArrayList<Observation> getCasillasProhibidas(StateObservation stateObs){
         ArrayList<Observation> bats = this.getBatsList(stateObs);
         ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
+        ArrayList<Observation> enemigos = new ArrayList<>(); // Array con todos los tipos de enemigos
         ArrayList<Observation> casillas_prohibidas = new ArrayList<>();
+        Observation obs_cas;
+        ObservationType tipo_obs_cas;
+        
+        enemigos.addAll(bats);
+        enemigos.addAll(scorpions);
         
         ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
         int ancho = grid.length;
@@ -2983,28 +3093,68 @@ public class Agent extends BaseAgent{
         boolean[][] matrix_cas_prob = new boolean[ancho][alto]; // Por defecto a false
         int x_act, y_act;
         
-        for (Observation bat : bats){
-            x_act = bat.getX();
-            y_act = bat.getY();
+        for (Observation enemigo : enemigos){
+            x_act = enemigo.getX();
+            y_act = enemigo.getY();
             
-            matrix_cas_prob[x_act][y_act] = true;
-            matrix_cas_prob[x_act+1][y_act] = true;
+            matrix_cas_prob[x_act][y_act] = true; // Casilla del enemigo
+            
+            matrix_cas_prob[x_act+1][y_act] = true; // Casillas adyacentes
             matrix_cas_prob[x_act-1][y_act] = true;
             matrix_cas_prob[x_act][y_act+1] = true;
             matrix_cas_prob[x_act][y_act-1] = true;
-        }
-        
-        for (Observation scorpion : scorpions){
-            x_act = scorpion.getX();
-            y_act = scorpion.getY();
             
-            matrix_cas_prob[x_act][y_act] = true;
-            matrix_cas_prob[x_act+1][y_act] = true;
-            matrix_cas_prob[x_act-1][y_act] = true;
-            matrix_cas_prob[x_act][y_act+1] = true;
-            matrix_cas_prob[x_act][y_act-1] = true;
+            // Si esas casillas adyacentes están vacías (el enemigo puede moverse por ellas)
+            // entonces también pongo a true sus adyacentes
+            
+            obs_cas = grid[x_act+1][y_act].get(0); // Derecha
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act+2][y_act] = true;
+                matrix_cas_prob[x_act+1][y_act+1] = true;
+                matrix_cas_prob[x_act+1][y_act-1] = true;
+            }
+                    
+            
+            obs_cas = grid[x_act-1][y_act].get(0); // Izquierda
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act-2][y_act] = true;
+                matrix_cas_prob[x_act-1][y_act+1] = true;
+                matrix_cas_prob[x_act-1][y_act-1] = true;
+            }
+            
+            
+            obs_cas = grid[x_act][y_act-1].get(0); // Arriba
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act][y_act-2] = true;
+                matrix_cas_prob[x_act+1][y_act-1] = true;
+                matrix_cas_prob[x_act-1][y_act-1] = true;
+            }
+            
+            
+            obs_cas = grid[x_act][y_act+1].get(0); // Abajo
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act][y_act+2] = true;
+                matrix_cas_prob[x_act+1][y_act+1] = true;
+                matrix_cas_prob[x_act-1][y_act+1] = true;
+            }
         }
-        
+
         // Recorro la matriz y por cada casilla que valga true añado una observacion con esa posición
         for (int this_x = 0; this_x < ancho; this_x++)
             for (int this_y = 0; this_y < alto; this_y++){
@@ -3014,15 +3164,21 @@ public class Agent extends BaseAgent{
 
         return casillas_prohibidas;
     }
-    
+
     // Sobrecarga de getCasillasProhibidas
     // Si se le pasa la salida, la casilla donde está y las 8 de alrededor se quitan de prohibidas
     // si estaban
     
-     private ArrayList<Observation> getCasillasProhibidas(StateObservation stateObs, Observation exit){
+    private ArrayList<Observation> getCasillasProhibidas(StateObservation stateObs, Observation exit){
         ArrayList<Observation> bats = this.getBatsList(stateObs);
         ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
+        ArrayList<Observation> enemigos = new ArrayList<>(); // Array con todos los tipos de enemigos
         ArrayList<Observation> casillas_prohibidas = new ArrayList<>();
+        Observation obs_cas;
+        ObservationType tipo_obs_cas;
+        
+        enemigos.addAll(bats);
+        enemigos.addAll(scorpions);
         
         ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
         int ancho = grid.length;
@@ -3030,26 +3186,66 @@ public class Agent extends BaseAgent{
         boolean[][] matrix_cas_prob = new boolean[ancho][alto]; // Por defecto a false
         int x_act, y_act;
         
-        for (Observation bat : bats){
-            x_act = bat.getX();
-            y_act = bat.getY();
+        for (Observation enemigo : enemigos){
+            x_act = enemigo.getX();
+            y_act = enemigo.getY();
             
-            matrix_cas_prob[x_act][y_act] = true;
-            matrix_cas_prob[x_act+1][y_act] = true;
+            matrix_cas_prob[x_act][y_act] = true; // Casilla del enemigo
+            
+            matrix_cas_prob[x_act+1][y_act] = true; // Casillas adyacentes
             matrix_cas_prob[x_act-1][y_act] = true;
             matrix_cas_prob[x_act][y_act+1] = true;
             matrix_cas_prob[x_act][y_act-1] = true;
-        }
-        
-        for (Observation scorpion : scorpions){
-            x_act = scorpion.getX();
-            y_act = scorpion.getY();
             
-            matrix_cas_prob[x_act][y_act] = true;
-            matrix_cas_prob[x_act+1][y_act] = true;
-            matrix_cas_prob[x_act-1][y_act] = true;
-            matrix_cas_prob[x_act][y_act+1] = true;
-            matrix_cas_prob[x_act][y_act-1] = true;
+            // Si esas casillas adyacentes están vacías (el enemigo puede moverse por ellas)
+            // entonces también pongo a true sus adyacentes
+            
+            obs_cas = grid[x_act+1][y_act].get(0); // Derecha
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act+2][y_act] = true;
+                matrix_cas_prob[x_act+1][y_act+1] = true;
+                matrix_cas_prob[x_act+1][y_act-1] = true;
+            }
+                    
+            
+            obs_cas = grid[x_act-1][y_act].get(0); // Izquierda
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act-2][y_act] = true;
+                matrix_cas_prob[x_act-1][y_act+1] = true;
+                matrix_cas_prob[x_act-1][y_act-1] = true;
+            }
+            
+            
+            obs_cas = grid[x_act][y_act-1].get(0); // Arriba
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act][y_act-2] = true;
+                matrix_cas_prob[x_act+1][y_act-1] = true;
+                matrix_cas_prob[x_act-1][y_act-1] = true;
+            }
+            
+            
+            obs_cas = grid[x_act][y_act+1].get(0); // Abajo
+            tipo_obs_cas = obs_cas.getType();
+            
+            if (tipo_obs_cas == ObservationType.EMPTY || tipo_obs_cas == ObservationType.BAT
+                 || tipo_obs_cas == ObservationType.PLAYER || tipo_obs_cas == ObservationType.SCORPION){
+                
+                matrix_cas_prob[x_act][y_act+2] = true;
+                matrix_cas_prob[x_act+1][y_act+1] = true;
+                matrix_cas_prob[x_act-1][y_act+1] = true;
+            }
         }
         
         // Pongo a false las casillas alrededor de la salida
@@ -3069,4 +3265,5 @@ public class Agent extends BaseAgent{
         
         return casillas_prohibidas;
     }
+     
 }

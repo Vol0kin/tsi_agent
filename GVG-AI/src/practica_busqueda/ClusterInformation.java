@@ -190,7 +190,11 @@ public class ClusterInformation {
                         dist_act -= dist_sumada;
                         num_gems_sol -= num_gems_cluster[sol_act[pos_act]];
                         sol_act[pos_act] = -1;
-                        pos_act--;
+                        
+                        if (pos_act != 0)
+                            pos_act--;
+                        else
+                            busqueda_terminada = true;
                     }
                     else{
                         // Compruebo si he conseguido un número suficiente de gemas para abandonar el nivel
