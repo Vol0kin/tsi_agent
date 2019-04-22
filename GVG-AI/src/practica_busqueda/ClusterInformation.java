@@ -220,7 +220,8 @@ public class ClusterInformation {
                         }
                         else{
                             // No es solución final -> sigo añadiendo clústeres
-                            pos_act++;
+                            if (pos_act + 1 < sol_act.length)
+                                pos_act++;
                         }
                     }
                 }
