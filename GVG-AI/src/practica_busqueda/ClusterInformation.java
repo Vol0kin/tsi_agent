@@ -2,9 +2,7 @@ package practica_busqueda;
 
 // Clase que guarda toda la información de los clústeres.
 
-import core.game.StateObservation;
 import java.util.ArrayList;
-import tools.pathfinder.*;
 
 // Guarda:
 // > Los clústeres realizados, con las gemas de cada uno

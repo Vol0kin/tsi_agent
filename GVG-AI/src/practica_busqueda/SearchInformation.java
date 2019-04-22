@@ -1,10 +1,19 @@
 package practica_busqueda;
 
-import java.lang.reflect.Array;
 import java.util.LinkedList;
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 import java.util.HashSet;
+
+// Clase que guarda la informacion de busqueda entre varios turnos
+// Guarda:
+//          - lista de abiertos
+//          - lista de cerrados
+//          - lista de explorados
+//          - lista de mapas de rocas
+//          - informacion sobre si la informacion esta vacia
+//          - numero de estados explorados
+//          - numero maximos de estados que se pueden explorar
 
 class SearchInformation {
     private PriorityQueue<GridNode> openList;

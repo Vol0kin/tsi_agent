@@ -2,8 +2,11 @@ package practica_busqueda;
 
 import java.util.ArrayList;
 
+// Interfaz que contiene algunos metodos utiles para las busquedas
+
 public interface UtilAlgorithms {
 
+    // Metodo para inicializar un mapa de booleanos a partir de un ArrayList
     static void initMap(boolean[][] map, ArrayList<Observation> information, int xSize, int ySize) {
 
         for (int x = 0; x < xSize; x++) {
@@ -17,6 +20,7 @@ public interface UtilAlgorithms {
         }
     }
 
+    // Metodo para copiar una matriz 2D en otra
     static void copy2DArray(boolean[][] source, boolean[][] destination, int xSize, int ySize) {
 
         for (int x = 0; x < xSize; x++) {
@@ -26,6 +30,7 @@ public interface UtilAlgorithms {
         }
     }
 
+    // Metodo para simular la caida de rocas al principio del turno
     static void simulateBoulderFall(ArrayList<Observation> boulders, boolean[][] boulderMap, boolean[][] groundMap,
                                     boolean[][] gemsMap, ArrayList<Observation>[][] grid) {
         ArrayList<Observation> fallingBoulders = findFallingBoulders(boulders, grid);
@@ -62,6 +67,7 @@ public interface UtilAlgorithms {
         }
     }
 
+    // Metodo para encontrar las rocas que pueden caer
     static ArrayList<Observation> findFallingBoulders(ArrayList<Observation> boulders, ArrayList<Observation>[][] grid) {
         ArrayList<Observation> fallingBoudlers = new ArrayList<>();
 

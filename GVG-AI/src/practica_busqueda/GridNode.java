@@ -4,6 +4,19 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import ontology.Types;
 
+// Clase que representa un nodo de busqueda
+// Guarda:
+//          - costes
+//          - lista de acciones que se han realizado desde el nodo anterior para llegar a este
+//          - posicion
+//          - orientacion al llegar a la posicion
+//          - nodo padre
+//          - lista de gemas por coger
+//          - mapas de gemas y tierra
+//          - indice al mapa de tierra
+//          - numero de gemas por coger
+//          - condicion de prohibir un movimiento hacia arriba
+
 class GridNode {
     private int gCost;
     private int hCost;
@@ -135,10 +148,5 @@ class GridNode {
         } else {
             return false;
         }
-    }
-
-    @Override
-    public String toString() {
-        return "Pos: " + position + " Coste g: " + this.gCost + " Coste h: " + this.hCost +  " Coste f:" + this.fCost + " Index: " + this.boulderIndex;
     }
 }

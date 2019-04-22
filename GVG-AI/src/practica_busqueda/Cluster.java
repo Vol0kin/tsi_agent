@@ -2,8 +2,6 @@ package practica_busqueda;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Arrays.*;
-import java.util.Collections;
 
 // Clúster de gemas
 // Guarda toda la información necesaria sobre el clúster

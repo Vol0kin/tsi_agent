@@ -6,7 +6,7 @@ import java.util.LinkedList;
 import java.util.ArrayList;
 
 /**
- *
+ * Clase que guarda la informacion relacionada a un plan
  * @author vladislav
  */
 class PathInformation {

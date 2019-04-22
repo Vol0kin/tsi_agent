@@ -7,24 +7,17 @@ import ontology.Types;
 import tools.ElapsedCpuTimer;
 import tools.Vector2d;
 
-import java.lang.reflect.Array;
-import java.nio.file.Path;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.PriorityQueue;
-import java.util.Deque;
-import java.util.ArrayDeque;
-import java.util.ListIterator;
-import java.util.TreeSet;
 import java.util.HashSet;
 
 import tools.pathfinder.*;
 
 public class Agent extends BaseAgent{
-    
-    private boolean primerTurno = true;
+
     PathInformation informacionPlan;
     private SearchInformation searchInfo;
     
@@ -1089,7 +1082,7 @@ public class Agent extends BaseAgent{
         return distance;
     }
 
-    /*
+    /**
      * Sobrecarga del metodo getHeuristicDistance
      * Acepta dos observacions y calcula la distancia entre ellos
      *
@@ -1125,6 +1118,9 @@ public class Agent extends BaseAgent{
 
         return neighbours;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // pathExplorer simple
 
     // Sobrecarga de pathExplorer para cuando la posición de inicio es la del
     // jugador de stateObs
@@ -1975,7 +1971,7 @@ public class Agent extends BaseAgent{
     }
 
     /**
-     * Metodo que parsea una sucesion de casillas y devuelve informacion
+     * Metodo que parsea una sucesion de nodos y devuelve informacion
      * del plan.
      * @param gridPath Objeto de la clase GridNode desde el que se empieza
      *                 a parsear el camino
