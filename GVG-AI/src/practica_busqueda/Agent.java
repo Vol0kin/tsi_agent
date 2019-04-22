@@ -63,7 +63,10 @@ public class Agent extends BaseAgent{
     
     private boolean ignorar_cas_prob_salida = false; // Vale true cuando no se encuentra un camino hacia la salida sin pasar a través de un enemigo
     
-    // EN EL CONSTRUCTOR TENGO MÁS TIEMPO PARA PLANIFICAR!!!!!
+    private boolean en_bucle_enemigos = false; // Se pone a true cuando hemos ejecutado 2 veces seguidas la misma acción para evitar enemigos y estando en la misma casilla
+    
+    private HashSet<Observation> casillas_huir_enemigos = new HashSet<>(); // Casillas donde se encontraba el jugador cuando tuvo que huir de los enemigos
+    
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
         
@@ -260,16 +263,85 @@ public class Agent extends BaseAgent{
             if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT){ // Veo si tengo que planificar para abandonar el nivel
                 Observation salida_nivel = this.getExit(stateObs);
                 
-                informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
-                //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+                if (!en_bucle_enemigos)
+                    informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
+                else{
+                    informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1); // Si estoy en bucle, ignoro los enemigos
+                    ignorar_cas_prob_salida = true;
+                }
             }
             
             else{ // Planifico para coger las gemas del clúster o ir al punto intermedio con el siguiente
                 // Veo si quedan gemas en el clúster
-                clusterInf.removeCapturedGems(clusterInf.circuito.get(sig_cluster), this.getGemsList(stateObs));
-                Cluster this_cluster = clusterInf.clusters.get(clusterInf.circuito.get(sig_cluster));
+                
+                if (!en_bucle_enemigos){
+                    clusterInf.removeCapturedGems(clusterInf.circuito.get(sig_cluster), this.getGemsList(stateObs));
+                    
+                    int indice_circuito = clusterInf.circuito.get(sig_cluster);
+                    Cluster this_cluster;
+                      
+                    if (indice_circuito < clusterInf.clusters.size())
+                        this_cluster = clusterInf.clusters.get(indice_circuito);
+                    else
+                        this_cluster = clusterInf.clusters.get(0);
 
-                if (this_cluster.getNumGems() > 0){ // Todavía le quedan gemas
+                    if (this_cluster.getNumGems() > 0){ // Todavía le quedan gemas
+                        gems_search = this_cluster.getGems();
+
+                        informacionPlan = pathExplorer(x_search, y_search,
+                                                 stateObs, gems_search,
+                                                 elapsedTimer, 6, casillas_prohibidas);
+
+                        if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
+                            accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
+                        }
+                        else{             
+                            accion = Types.ACTIONS.ACTION_NIL;
+                        }
+                    }
+                    else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
+                        informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
+
+                        //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
+                    }
+                }  
+                else{ // Estoy en bucle -> vuelvo a crear los clusters pero no puedo ir a ese
+                    
+                    // Vuelvo a crear toda la información de los clústeres desde el principio (no tarda mucho (en el nivel 1 tarda 5 ms como mucho))
+                    ArrayList<Observation> gemas_actuales = this.getGemsList(stateObs);
+
+                    gemas_no_accesibles.addAll(gems_search); // Añado las gemas del clúster actual como no accesibles
+
+                    // Elimino de esas gemas las del cluster al que no se puede llegar
+                    gemas_actuales.removeAll(gemas_no_accesibles);
+
+                    if (gemas_actuales.size() == 0){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
+                        ignorar_cas_prob_clusters = true; // Ya no tengo en cuenta las casillas prohibidas 
+                        casillas_prohibidas.clear();
+
+                        gemas_no_accesibles.clear();
+                        gemas_actuales = this.getGemsList(stateObs);
+                    }
+
+                    clusterInf.createClusters(3, gemas_actuales,
+                    this.getBouldersList(stateObs), this.getWallsList(stateObs),
+                    this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
+
+                    this.saveClustersDistances(clusterInf); // Guardo la matriz de distancias
+                    this.saveCircuit(clusterInf, jugador.getX(),
+                    jugador.getY(), salida.getX(),
+                    salida.getY(), this.getRemainingGems(stateObs)); // Creo el camino a través de los clústeres
+
+                    sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
+                    
+                    // Replanifico
+                    
+                    int ind_circuito = clusterInf.circuito.get(0);
+                    
+                    if (ind_circuito >= clusterInf.clusters.size())
+                        ind_circuito = 0;
+                    
+                    Cluster this_cluster = clusterInf.clusters.get(ind_circuito);
                     gems_search = this_cluster.getGems();
 
                     informacionPlan = pathExplorer(x_search, y_search,
@@ -282,12 +354,8 @@ public class Agent extends BaseAgent{
                     else{             
                         accion = Types.ACTIONS.ACTION_NIL;
                     }
-                }
-                else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
-                    informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
-
-                    //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
-                }
+                    
+                }   
             }
         }
         
@@ -386,13 +454,17 @@ public class Agent extends BaseAgent{
         boolean caminos_conectados;
                     
         boolean enemigos_cercanos = false; 
-            
+        
+        int dist_umbral = 4; // Distancia manhattan a la que tienen que estar los enemigos para ser considerados un peligro
+         
+        StateObservation estado_juego = stateObs.copy();
+        
         for(int i = 0; i < enemigos.size() && !enemigos_cercanos; i++){
             caminos_conectados = connectionToEnemy(stateObs, accion, enemigos.get(i), jugador);
             
             if (caminos_conectados){ // El camino del enemigo está conectado al del jugador
                 
-                if (jugador.getManhattanDistance(enemigos.get(i)) <= 4){ // Veo que esté a una distancia manhattan de 4 o menos -> si no, no es un peligro y no lo tengo en cuenta
+                if (this.getHeuristicDistance(jugador, enemigos.get(i)) <= dist_umbral){
                     enemigos_cercanos = true;
                 }
                 
@@ -528,7 +600,10 @@ public class Agent extends BaseAgent{
                         caminos_conectados = connectionToEnemy(stateObs, accion_connection, enemigo, jugador_connection);
 
                         if (caminos_conectados){ // El camino del enemigo está conectado al del jugador
-                            this_dist = jugador_tras_accion.getManhattanDistance(enemigo);
+                            if (jugador_tras_accion != null)
+                                this_dist = this.getHeuristicDistance(jugador_tras_accion, enemigo);
+                            else
+                                this_dist = 0;
                             
                             if (this_dist < min_dist)
                                 min_dist = this_dist;
@@ -555,7 +630,7 @@ public class Agent extends BaseAgent{
                 int[] dist_cas_obj = new int[num_casillas_validas];
                 
                 for (int i = 0; i < num_casillas_validas; i++)
-                    dist_cas_obj[i] = obs_objetivo.getManhattanDistance(casillas_validas.get(i));
+                    dist_cas_obj[i] = this.getHeuristicDistance(obs_objetivo, casillas_validas.get(i));
                 
                 
                 // Veo si hay casillas con dist_cas_enem > 4
@@ -563,7 +638,7 @@ public class Agent extends BaseAgent{
                 int ind_min_dist_obj = -1;
 
                 for (int i = 0; i < num_casillas_validas; i++){
-                    if (dist_cas_enem[i] > 4){
+                    if (dist_cas_enem[i] > dist_umbral){
                         if (dist_cas_obj[i] < min_dist_obj){
                             min_dist_obj = dist_cas_obj[i];
                             ind_min_dist_obj = i;
@@ -591,9 +666,6 @@ public class Agent extends BaseAgent{
                     
                     casilla_elegida = casillas_validas.get(ind_max_dist_enem);
                     casilla_ya_elegida = true;
-                    
-                    
-                    System.out.println("CASILLA ELEGIDA: " + casilla_elegida);
                 }
                 
                 // Ahora transformo la casilla elegida en acciones en plan_no_morir para llegar a ella
@@ -627,6 +699,23 @@ public class Agent extends BaseAgent{
                             plan_no_morir.add(Types.ACTIONS.ACTION_DOWN);  
                     }
                 }
+                
+                // Veo si estoy en un bucle -> el jugador ya se encontró en esta posición
+                Observation obs_guardar = new Observation(jug_x, jug_y, ObservationType.EMPTY);
+                
+                if(casillas_huir_enemigos.contains(obs_guardar)){
+                    en_bucle_enemigos = true;
+                }
+                else{
+                    en_bucle_enemigos = false;
+                }
+                
+                casillas_huir_enemigos.add(obs_guardar);
+                
+                System.out.println("ACCIONES PARA CASILLA: " + plan_no_morir.get(0));
+                
+                
+                
             }
             else{ // Si no hay casillas válidas, no hago nada
                 enemigos_cercanos = false;
@@ -2102,12 +2191,16 @@ public class Agent extends BaseAgent{
 
     private boolean connectionToEnemy(StateObservation stateObs, Types.ACTIONS action, Observation enemy, PlayerObservation player) {
 
+        if (player == null || action == null) // Si el jugador ha muerto tras aplicar la acción
+            return true;
+        
+        
         // Get grid after applying the given action
         ArrayList<Observation>[][] grid = this.getObservationGrid(stateObs);
 
         // Get player positions
         int xPlayer = player.getX(), yPlayer = player.getY();
-
+        
         if (player.getOrientation().equals(Orientation.N) && action.equals(Types.ACTIONS.ACTION_UP)) {
             yPlayer--;
         } else if (player.getOrientation().equals(Orientation.S) && action.equals(Types.ACTIONS.ACTION_DOWN)) {

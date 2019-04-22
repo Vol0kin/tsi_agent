@@ -242,6 +242,7 @@ public class ClusterInformation {
     // Ind_clúster es el índice de clusters, no de los clusters del circuito!
     
     public void removeCapturedGems(int ind_cluster, ArrayList<Observation> remaining_gems){
-        clusters.get(ind_cluster).removeCapturedGems(remaining_gems);
+        if (ind_cluster < clusters.size())
+            clusters.get(ind_cluster).removeCapturedGems(remaining_gems);
     }
 }
