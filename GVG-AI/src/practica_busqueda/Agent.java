@@ -83,7 +83,6 @@ public class Agent extends BaseAgent{
         
         for (ArrayList<core.game.Observation> obs : obstaculos ){
             tiposObs.add(obs.get(0).obsID);
-            //System.out.println(obs.get(0).obsID);
         }
         
         tiposObs . add (( int ) 'o' ) ;
@@ -123,8 +122,6 @@ public class Agent extends BaseAgent{
             jugador.getY(), salida.getX(),
             salida.getY(), this.getRemainingGems(so)); // Creo el camino a través de los clústeres
             
-            //for (Cluster cluster : clusterInf.clusters)
-                //System.out.println(cluster.getGems());
             
             gems_search = clusterInf.getGemsCircuitCluster(0); // Cojo las gemas del clúster 1 del circuito
             
@@ -139,9 +136,7 @@ public class Agent extends BaseAgent{
                     this.getExit(so), so);
             
             x_search = casilla_search[0];
-            y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-            
-            //System.out.println(x_search + " " + y_search);
+            y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!          
             
             if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida entre este clúster y el siguiente
                 informacionPlan = pathExplorer(x_search, y_search,
@@ -182,15 +177,11 @@ public class Agent extends BaseAgent{
 
         if (!plan_no_morir.isEmpty()){ // Si tengo acciones del plan para no morir, las ejecuto y termino el act
             it++;
-            System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
             return plan_no_morir.pollFirst();
         }
-        else
-            System.out.println("Primera acción plan normal: " + informacionPlan.plan.peekFirst());
         
         // Si tengo 9 gemas, planifico para abandonar el nivel
         if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT && !abandonando_nivel){
-            //System.out.println("Voy a abandonar el nivel - x: " + this.getPlayer(stateObs).getX() + " y: " + this.getPlayer(stateObs).getY() + " or: " + this.getPlayer(stateObs).getOrientation());
             abandonando_nivel = true;
             
             Observation level_exit = this.getExit(stateObs);
@@ -198,9 +189,6 @@ public class Agent extends BaseAgent{
             y_search = level_exit.getY();
             
             informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
-            //System.out.println("Plan: " + informacionPlan.plan);
-            
-            //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
             
             if (!informacionPlan.existsPath){
                 ignorar_cas_prob_salida = true; // Ya no tengo en cuenta las casillas prohibidas 
@@ -219,7 +207,6 @@ public class Agent extends BaseAgent{
         if (informacionPlan.searchComplete && !informacionPlan.existsPath){
             hay_que_replanificar = true;
             accion = Types.ACTIONS.ACTION_NIL;
-            //System.out.println("No existe camino - it: " + it);
                 
             // Clúster -> no puedo coger ese clúster, lo elimino (le queden o no gemas) y vuelvo a crear otro circuito 
             if (this.getNumGems(stateObs) < NUM_GEMS_FOR_EXIT){
@@ -232,7 +219,6 @@ public class Agent extends BaseAgent{
                 gemas_actuales.removeAll(gemas_no_accesibles);
                 
                 if (gemas_actuales.size() < this.getRemainingGems(stateObs)){ // Si no hay suficientes clusters, quito las restricciones
-                    System.out.println("------------------- SE HA DADO ----------------------------");
                     ignorar_cas_prob_clusters = true; // Ya no tengo en cuenta las casillas prohibidas 
                     casillas_prohibidas.clear();
                     
@@ -251,19 +237,6 @@ public class Agent extends BaseAgent{
                 salida.getY(), this.getRemainingGems(stateObs)); // Creo el camino a través de los clústeres
 
                 sig_cluster = 0; // Vuelvo a empezar por el principio del circuito
-                
-                // NUEVO
-                
-                System.out.println("NUEVO");
-                    System.out.println("gemas que quedan: " + this.getRemainingGems(stateObs));
-                    System.out.println("num clusters: " + clusterInf.getNumClusters());
-                    System.out.println("Clusters existentes:");
-                            
-                    for (Cluster cluster : clusterInf.clusters)
-                        System.out.println(cluster.getGems());
-                            
-                    System.out.println("Tam circuito: " + clusterInf.circuito.size());
-                    System.out.println("cluster 0 circuito: " + clusterInf.circuito.get(0));
                 
                 int[] casilla_search;
                 gems_search = clusterInf.getGemsCircuitCluster(0);
@@ -301,7 +274,6 @@ public class Agent extends BaseAgent{
                         informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1); // Si estoy en bucle, ignoro los enemigos
                         ignorar_cas_prob_salida = true;
                         bucle_2_abandonar_nivel = true;
-                        //System.out.println("Aqui - accion: " + informacionPlan.plan.get(0));
                         
                         // Añado la casilla prohibida dada por la primera acción de este plan
                         Types.ACTIONS accion_bucle_2 = informacionPlan.plan.get(0);
@@ -358,8 +330,6 @@ public class Agent extends BaseAgent{
                     }
                     else{ // No le quedan gemas -> uso el A* simple para irme al punto entre este clúster y el siguiente
                         informacionPlan = pathExplorer(x_search, y_search, stateObs, elapsedTimer, (long) 1);
-
-                        //informacionPlan.searchComplete = true; // Tiene que terminar en un turno
                     }
                 }  
                 else{ // Estoy en bucle -> vuelvo a crear los clusters pero no puedo ir a ese
@@ -392,21 +362,8 @@ public class Agent extends BaseAgent{
                     sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
                     
                     // Replanifico
-                    /*
-                    int ind_circuito = clusterInf.circuito.get(0);
-                    
-                    if (ind_circuito >= clusterInf.clusters.size())
-                        ind_circuito = 0;
-                    
-                    Cluster this_cluster = clusterInf.clusters.get(ind_circuito);
-                    gems_search = this_cluster.getGems();*/
-                    
-                    // NUEVO
+
                     int[] casilla_search;
-                    System.out.println("NUEVO");
-                    System.out.println("num clusters: " + clusterInf.getNumClusters());
-                    System.out.println("Tam circuito: " + clusterInf.circuito.size());
-                    System.out.println("cluster 0 circuito: " + clusterInf.circuito.get(0));
                     gems_search = clusterInf.getGemsCircuitCluster(0);
 
                     if (1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
@@ -440,8 +397,6 @@ public class Agent extends BaseAgent{
         if (informacionPlan.searchComplete){ // Ya ha terminado la planificación
             
             if (informacionPlan.plan.isEmpty()) { // Si he acabado de ejecutar el plan, planifico para el clúster siguiente
-                //System.out.println("Plan vacío - searchComplete = true - existsPath = " + informacionPlan.existsPath);
-                //System.out.println(informacionPlan.plan);
                 
                 if (sig_cluster+1 >= clusterInf.circuito.size()){ // Me daría outOfBounds exception porque ya no hay ningún clúster más del circuito
                     hay_que_replanificar = true;
@@ -460,7 +415,6 @@ public class Agent extends BaseAgent{
 
                         sig_cluster = 0; // Vuelvo a empezar por el principio del circuito
                         
-                        // NUEVO
                         int[] casilla_search;
                         gems_search = clusterInf.getGemsCircuitCluster(0);
 
@@ -495,8 +449,6 @@ public class Agent extends BaseAgent{
 
                     x_search = casilla_search[0];
                     y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
-
-                    //System.out.println(gems_search);
 
                     if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
                         informacionPlan = pathExplorer(x_search, y_search,
@@ -561,14 +513,10 @@ public class Agent extends BaseAgent{
                 if (this.getHeuristicDistance(jugador, enemigos.get(i)) <= dist_umbral){
                     enemigos_cercanos = true;
                 }
-                
-                //System.out.println("Enemigo " + enemigos.get(i) + " conectado!");
             }
         }
                
         if (enemigos_cercanos){ // La siguiente accion pone al jugador en peligro -> veo si hay alguna acción mejor
-            System.out.println("ENEMIGOS CERCANOS");
-            
             // Casillas posibles a la que ir -> arriba, abajo, derecha o izquierda
             
             // Veo qué casillas son válidas -> si voy a ella no voy a morir por una roca
@@ -708,11 +656,6 @@ public class Agent extends BaseAgent{
                     dist_cas_enem[i] = min_dist;
                 }
                 
-                //System.out.println("CASILLAS VALIDAS IT - " + it);
-                //for (int i = 0; i < num_casillas_validas; i++)
-                    //System.out.println(casillas_validas.get(i) + " - " + dist_cas_enem[i]);
-                
-                
                 // Si hay casillas con dist_cas_enem > 4, escojo la más cercana al objetivo
                 // Si no, escojo la casilla con mayor dist_cas_enem
                 
@@ -799,7 +742,6 @@ public class Agent extends BaseAgent{
                 Observation obs_guardar = new Observation(jug_x, jug_y, ObservationType.EMPTY);
                 
                 if(casillas_huir_enemigos.contains(obs_guardar)){
-                    System.out.println("EN BUCLE --");
                     en_bucle_enemigos = true;
                 }
                 else{
@@ -807,11 +749,7 @@ public class Agent extends BaseAgent{
                 }
                 
                 casillas_huir_enemigos.add(obs_guardar);
-                
-                //System.out.println("ACCIONES PARA CASILLA: " + plan_no_morir.get(0));
-                
-                
-                
+
             }
             else{ // Si no hay casillas válidas, no hago nada
                 enemigos_cercanos = false;
@@ -869,9 +807,6 @@ public class Agent extends BaseAgent{
         
         
         if (condicion_ejec_parte_rocas){ // Va a morir y no es por un enemigo -> es por una roca
-            //System.out.println("Va a morir! - it: " + it);
-            //System.out.println(plan_usado.get(0));
-            //System.out.println(accion);
             
             // Si va a morir ejecuto las acciones necesarias para sobrevivir y después vuelvo a la casilla donde estaba y sigo ejecutando el plan
             
@@ -904,7 +839,6 @@ public class Agent extends BaseAgent{
             }
             
             if (muerte_por_roca){ // Me va a aplastar una roca pero no hay enemigos cercanos -> me aparto de la roca sin preocuparme de los enemigos
-                //System.out.println("MUERTE POR ROCA");
                 
                 StateObservation estado_prueba;
                 plan_no_morir.clear();
@@ -929,7 +863,6 @@ public class Agent extends BaseAgent{
                     
                     if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                         plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                        //System.out.println("Me quedo quieto");
                     }
                 }
                 
@@ -954,7 +887,6 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                            //System.out.println("Me muevo hacia la izquierda");
                         }
                     }
                     else{ // Primero giro a la izquierda y después me muevo
@@ -974,7 +906,6 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
-                            //System.out.println("Me muevo hacia la izquierda");
                         }
                     }   
                 }
@@ -1000,7 +931,6 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                           // System.out.println("Me muevo hacia la derecha");
                         }
                     }
                     else{ // Primero giro a la izquierda y después me muevo
@@ -1020,15 +950,12 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
-                            //System.out.println("Me muevo hacia la derecha");
                         }
                     }   
                 }
                 
                 // Por último, si no ha funcionado nada, me muevo hacia abajo
                 if (plan_no_morir.isEmpty()){
-                    //System.out.println("Me muevo hacia abajo");
-                    
                     estado_prueba = stateObs.copy();
                     estado_prueba.advance(Types.ACTIONS.ACTION_DOWN);
                     estado_prueba.advance(Types.ACTIONS.ACTION_DOWN);
@@ -1040,7 +967,6 @@ public class Agent extends BaseAgent{
             }
 
             hay_que_replanificar = true; // Cuando termine de ejecutar este plan, tendré que replanificar
-            //System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
             it++;
             
             if (plan_no_morir.isEmpty())
@@ -1074,7 +1000,6 @@ public class Agent extends BaseAgent{
                 
                 
                 if (plan_invalido){ // Si el plan es inválido, este turno me quedo quieto y el siguiente replanifico
-                    System.out.println("Plan invalido");
                     ignorar_cas_prob_clusters = true;
                     ignorar_cas_prob_salida = true;
                     hay_que_replanificar = true;
@@ -1125,8 +1050,6 @@ public class Agent extends BaseAgent{
                 
                 
                 if (!hay_gema_o_tierra || !hay_roca){ // Si la acción no es para excavar, se ha chocado -> me quedo quieto
-                    //System.out.println("Se ha chocado con una roca! - it: " + it);
-                    //System.out.println("Accion aplazada: " + accion);
                     it++;
                     return Types.ACTIONS.ACTION_NIL; // Me quedo quieto y no ejecuto la acción del plan (la ejecutaré el siguiente turno si no vuelve a pasar)
                 }
@@ -1179,198 +1102,6 @@ public class Agent extends BaseAgent{
         return getHeuristicDistance(obs1.getX(), obs1.getY(), obs2.getX(), obs2.getY());
     }
     
-    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs) {
-        return (pathFinder(xObjetivo, yObjetivo, stateObs, this.getPlayer(stateObs)));
-    }
-    
-    // Cuando se proporcione una posicion inicial personalizada, se debe asignar una orientacion al personaje
-    private PathInformation pathFinder(int xObjetivo, int yObjetivo, StateObservation stateObs, PlayerObservation posInicial ){   
-        // Plan a devolver
-        PathInformation nuevoPlan = new PathInformation();
-
-        // Cola de nodos abiertos
-        PriorityQueue<CasillaCamino> listaAbiertos = new PriorityQueue<>(
-                (CasillaCamino c1, CasillaCamino c2) -> c1.costeF - c2.costeF);
-        
-        // Lista de nodos explorados (cerrados)
-        ArrayList<CasillaCamino> listaExplorados = new ArrayList<>();
-        
-        // Observacion del mapa
-        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
-        
-        // Observacion actual a explorar
-        Observation observacionActual;
-        
-        // Representa el nodo que se explora a continuacion
-        CasillaCamino nodoActual;
-        
-        final ObservationType muro = ObservationType.WALL,
-                              roca = ObservationType.BOULDER;
-        
-        // Objetivo a encontrar
-        final Observation objetivo = observacionNivel[xObjetivo][yObjetivo].get(0);
-        
-        final int numFilas = observacionNivel.length,
-                  numColumnas = observacionNivel[0].length;
-        
-        // Mapa de casillas exploradas
-        boolean[][] mapaExplorado = new boolean[numFilas][numColumnas];
-        
-        for (int i = 0; i < numFilas; i++) {
-            for (int j = 0; j < numColumnas; j++) {
-                mapaExplorado[i][j] = false;
-            }
-        }
-        
-        boolean objetivoEncontrado = false;
-        
-        listaAbiertos.add(new CasillaCamino(0, this.getHeuristicDistance(posInicial, objetivo),
-                                            posInicial.getOrientation(), null, posInicial, null));
-        
-        mapaExplorado[posInicial.getX()][posInicial.getY()] = true;
-        
-        while (!listaAbiertos.isEmpty() && !objetivoEncontrado) {
-                       
-            nodoActual = listaAbiertos.poll();
-            
-            observacionActual = nodoActual.observacion;
-            
-            int xActual = observacionActual.getX(),
-                yActual = observacionActual.getY();
-            
-            if (objetivo.equals(observacionActual)) {
-                objetivoEncontrado = true;
-            } else {                
-                LinkedList<Types.ACTIONS> acciones;
-                
-                int yArriba = yActual - 1,
-                    yAbajo = yActual + 1,
-                    xIzquierda = xActual - 1,
-                    xDerecha = xActual + 1,
-                    yArribaRoca = yArriba - 1 < 0 ? 0 : yArriba - 1,
-                    costeHijo;  // Coste para ir al hijo (numero de acciones)
-            
-                Observation casillaArriba = observacionNivel[xActual][yArriba].get(0),
-                            casillaAbajo = observacionNivel[xActual][yAbajo].get(0),
-                            casillaDerecha = observacionNivel[xDerecha][yActual].get(0),
-                            casillaIzquierda = observacionNivel[xIzquierda][yActual].get(0);
-                
-                // Descendiente superior
-                if (!mapaExplorado[xActual][yArriba] &&
-                    !casillaArriba.getType().equals(muro) && !casillaArriba.getType().equals(roca) &&
-                    !observacionNivel[xActual][yArribaRoca].get(0).getType().equals(roca)) {
-                    
-                
-                    acciones = new LinkedList<>();
-                    acciones.addFirst(Types.ACTIONS.ACTION_UP);
-                    costeHijo = nodoActual.costeG + 1;
-                    
-                    if (!nodoActual.orientacion.equals(Orientation.N)) {
-                        acciones.addFirst(Types.ACTIONS.ACTION_UP);
-                        costeHijo++;
-                    }
-                    
-                    listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        this.getHeuristicDistance(casillaArriba, objetivo),
-                                                        Orientation.N, acciones, casillaArriba, nodoActual));
-                }
-                
-                mapaExplorado[xActual][yArriba] = true;
-                
-                // Descendiente inferior
-                if (!mapaExplorado[xActual][yAbajo] &&
-                    !casillaAbajo.getType().equals(muro) && !casillaAbajo.getType().equals(roca)) {
-                
-                    acciones = new LinkedList<>();
-                    acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
-                    costeHijo = nodoActual.costeG + 1;
-                    
-                    if (!nodoActual.orientacion.equals(Orientation.S)) {
-                        acciones.addFirst(Types.ACTIONS.ACTION_DOWN);
-                        costeHijo++;
-                    }
-                    
-                    listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        this.getHeuristicDistance(casillaAbajo, objetivo),
-                                                        Orientation.S, acciones, casillaAbajo, nodoActual));
-                }
-                
-                mapaExplorado[xActual][yAbajo] = true;
-                
-                // Descendiente izquierdo
-                if (!mapaExplorado[xIzquierda][yActual] &&
-                    !casillaIzquierda.getType().equals(muro) && !casillaIzquierda.getType().equals(roca) &&
-                    !observacionNivel[xIzquierda][yArriba].get(0).getType().equals(roca)) {
-                    
-                
-                    acciones = new LinkedList<>();
-                    acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
-                    costeHijo = nodoActual.costeG + 1;
-                    
-                    if (!nodoActual.orientacion.equals(Orientation.W)) {
-                        acciones.addFirst(Types.ACTIONS.ACTION_LEFT);
-                        costeHijo++;
-                    }
-                    
-                    listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        this.getHeuristicDistance(casillaIzquierda, objetivo),
-                                                        Orientation.W, acciones, casillaIzquierda, nodoActual));
-                }
-                
-                mapaExplorado[xIzquierda][yActual] = true;
-                
-                // Descendiente derecho
-                if (!mapaExplorado[xDerecha][yActual] &&
-                    !casillaDerecha.getType().equals(muro) && !casillaDerecha.getType().equals(roca) &&
-                    !observacionNivel[xDerecha][yArriba].get(0).getType().equals(roca)) {
-                    
-                
-                    acciones = new LinkedList<>();
-                    acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
-                    costeHijo = nodoActual.costeG + 1;
-                    
-                    if (!nodoActual.orientacion.equals(Orientation.E)) {
-                        acciones.addFirst(Types.ACTIONS.ACTION_RIGHT);
-                        costeHijo++;
-                    }
-                    
-                    listaAbiertos.add(new CasillaCamino(costeHijo,
-                                                        this.getHeuristicDistance(casillaDerecha, objetivo),
-                                                        Orientation.E, acciones, casillaDerecha, nodoActual));
-                }
-                
-                mapaExplorado[xDerecha][yActual] = true;
-                
-            }                  
-            
-            listaExplorados.add(nodoActual);
-        }
-        
-        // Obtener la casilla del objetivo
-        CasillaCamino recorrido = listaExplorados.get(listaExplorados.size() - 1);
-        
-        // Guardar distancia recorrida  y acciones en la informacion del plan
-        if (objetivoEncontrado) {
-            //System.out.println("Encontrado objetivo");
-            //nuevoPlan.distancia = posInicial.getManhattanDistance(objetivo);
-        
-            while (recorrido.padre != null) {
-                // Aniadir casillas recorridas
-                nuevoPlan.listaCasillas.add(0, recorrido.observacion);
-                
-                // Aniadir secuencia de acciones realizadas
-                nuevoPlan.plan.addAll(0, recorrido.acciones);
-                recorrido = recorrido.padre;
-            }
-            
-            // Aniadir casilla inicial
-            nuevoPlan.listaCasillas.add(0, recorrido.observacion);
-            nuevoPlan.distancia = nuevoPlan.listaCasillas.size();
-        }  
-        
-        return nuevoPlan;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Metodos de busqueda
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1637,7 +1368,6 @@ public class Agent extends BaseAgent{
             plan.boulderMap = boulderConfigurations.get(path.getBoulderIndex());
             plan = parsePlan(path);
         } else {
-            System.out.println("no encontrado");
             plan.existsPath = false;
         }
 
@@ -1648,14 +1378,6 @@ public class Agent extends BaseAgent{
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // pathExplorer con movimiento de rocas
-
-    // Sobrecarga de pathExplorer para cuando no hay ignoreList
-    private PathInformation pathExplorer(int xGoal, int yGoal,
-                                         StateObservation stateObs, ArrayList<Observation> goalGems,
-                                         ElapsedCpuTimer elapsedTimer, long timeThreshold){
-        return pathExplorer(this.getPlayer(stateObs), xGoal, yGoal, stateObs, goalGems,
-                                elapsedTimer, timeThreshold, null, null, null);
-    }
 
     // Sobrecarga de pathExplorer para cuando la posición de inicio es la del
     // jugador de stateObs
@@ -1947,7 +1669,6 @@ public class Agent extends BaseAgent{
             plan.boulderMap = boulderConfigurations.get(path.getBoulderIndex());
             plan = parsePlan(path);
         } else {
-            System.out.println("no encontrado " + exploredStates);
             plan.existsPath = false;
         }
 
@@ -1959,11 +1680,6 @@ public class Agent extends BaseAgent{
 
     ////////////////////////////////////////////////////////////////////////////////
     // Versiones que paran cuando han cogido todas las gemas
-    private PathInformation pathExplorer(StateObservation stateObs, ArrayList<Observation> goalGems,
-                                         ElapsedCpuTimer elapsedTimer, long timeThreshold){
-        return pathExplorer(this.getPlayer(stateObs), stateObs, goalGems,
-                elapsedTimer, timeThreshold, null, null, null);
-    }
 
     // Sobrecarga de pathExplorer para cuando la posición de inicio es la del
     // jugador de stateObs
@@ -2249,7 +1965,6 @@ public class Agent extends BaseAgent{
             plan.boulderMap = boulderConfigurations.get(path.getBoulderIndex());
             plan = parsePlan(path);
         } else {
-            System.out.println("no encontrado " + exploredStates);
             plan.existsPath = false;
         }
 
@@ -2373,176 +2088,7 @@ public class Agent extends BaseAgent{
 
             closedList.addFirst(currentNode);
         }
-        //System.out.println(foundPlayer + " " + enemy + " " + player + " " + nextPlayerPos + " " + action);
-
-
         return foundPlayer;
-    }
-
-    private double enemyProbability(PathInformation plan, StateObservation stateObs) {
-        // Asociar pares enemigo:probabilidad
-        Map<Observation, Double> probabilidadesEnemigos = new HashMap<>();
-        
-        ArrayList<Observation> enemigos = new ArrayList<>();
-        ArrayList<Observation>[][] observacionNivel = this.getObservationGrid(stateObs);
-        Deque<Observation> casillasLibres = new ArrayDeque<>();
-        
-        // Numero de enemigos encontrados en el camino
-        int numEnemigosCamino = 0;
-        
-        /* Posibles casillas a las que puede llegar un enemigo.
-        Se resetean para cada enemigo */
-        ArrayList<Observation> posiblesCasillasCamino = new ArrayList<>();
-        
-        // Probabilidad acumulada de encontrar enemigos en el camino
-        // Probabilidad total de encontrarse con algun enemigo por el camino
-        double probabilidadAcumulada = 1.0,
-               probabilidadTotal = 0.0;
-        
-        enemigos.addAll(this.getBatsList(stateObs));
-        enemigos.addAll(this.getScorpionsList(stateObs));
-        
-        Observation observacionActual;
-        
-        final int numFilas = observacionNivel.length,
-                  numColumnas = observacionNivel[0].length,
-                  numEnemigos = enemigos.size();
-        
-        final ObservationType muro = ObservationType.WALL,
-                              vacio = ObservationType.EMPTY;
-        
-        /* Probabilidad del enemigo de moverse en una determinada direccion.
-        4 posibles direcciones: arriba, abajo, izquierda y derecha */
-        final double probMovimientoDireccion = 0.25;
-        
-        // Mapa de celdas exploradas para cada enemigo
-        boolean [][] celdasExploradas = new boolean[numFilas][numColumnas];
-        
-        for (int i = 0; i < numFilas; i++) {
-            for (int j = 0; j < numColumnas; j++) {
-                celdasExploradas[i][j] = false;
-            }
-        }
-        
-        // Obtener para cada enemigo las posibles casillas a las que puede llegar
-        for (int i = 0; i < numEnemigos; i++) {
-            Observation enemigoActual = enemigos.get(i);
-            casillasLibres.addFirst(enemigoActual);            
-            
-            boolean[][] mapaPropio = celdasExploradas.clone();            
-            mapaPropio[enemigos.get(i).getX()][enemigos.get(i).getY()] = true;  
-            
-            ArrayList<Observation> casillasHijo = new ArrayList<>();
-            
-            // Obtener las casillas adyacentes a las que puede llegar el enemigo
-            while (!casillasLibres.isEmpty()) {
-                observacionActual = casillasLibres.pollFirst();
-                
-                int xActual = observacionActual.getX(),
-                    yActual = observacionActual.getY();
-                
-                casillasHijo.clear();
-                
-                casillasHijo.add(observacionNivel[xActual][yActual - 1].get(0));     // casilla arriba
-                casillasHijo.add(observacionNivel[xActual][yActual + 1].get(0));     // casilla abajo
-                casillasHijo.add(observacionNivel[xActual - 1][yActual].get(0));     // casilla izquierda
-                casillasHijo.add(observacionNivel[xActual + 1][yActual].get(0));     // casilla derecha
-                
-                for (Observation obs: casillasHijo) {
-                    xActual = obs.getX();
-                    yActual = obs.getY();
-                    
-                    if (!mapaPropio[xActual][yActual]) {
-                        
-                        if (obs.getType().equals(vacio)) {
-                            casillasLibres.addLast(obs);
-                        }
-                        
-                        if (!obs.getType().equals(muro)) {
-                            posiblesCasillasCamino.add(obs);
-                        }                        
-                    }
-                    
-                    mapaPropio[xActual][yActual] = true;
-                }                
-            }
-            
-            /* Iterar sobre las posibles casillas para comprobar cuales
-            se encuentran dentro del plan del agente. Eliminar aquellas
-            que no se encuentren en el camino del agente */
-            ListIterator iterator = posiblesCasillasCamino.listIterator();
-            
-            while (iterator.hasNext()) {
-                Observation casilla = (Observation) iterator.next();
-                boolean contenidaCasillaCamino = false;
-                
-                for (Observation casillaCamino: plan.listaCasillas) {
-                    if (casillaCamino.equals(casilla)) {
-                        contenidaCasillaCamino = true;
-                    }
-                }
-                
-                if (!contenidaCasillaCamino) {
-                    iterator.remove();
-                }
-            }
-            
-            
-            // Obtener la probabilidad de que el enemigo se encuentre en el camino
-            double probabilidadEnemigo = 0.0;
-            
-            /* Obtener la distancia a la casilla más cercana a la del enemigo
-            La distancia tiene que ser menor a la raiz de la distancia del camino
-            del agente para que pueda ser alcanzable */
-            if (!posiblesCasillasCamino.isEmpty()) {
-                numEnemigosCamino++;
-                int distanciaMinima = Integer.MAX_VALUE;
-                
-                for (Observation casilla : posiblesCasillasCamino) {
-                    int distanciaCasilla = enemigoActual.getManhattanDistance(casilla);
-                    
-                    if (distanciaCasilla < distanciaMinima) {
-                        distanciaMinima = distanciaCasilla;
-                    }
-                }
-                
-                /* La probabilidad es 1/4 (numero de posibles casillas a las 
-                que moverse en cada momento) elevado a la distancia hasta la
-                casilla más próxima */
-                if (distanciaMinima < Math.sqrt(plan.distancia)) {
-                    probabilidadEnemigo = Math.pow(probMovimientoDireccion, distanciaMinima);
-                }
-            }
-            
-            probabilidadesEnemigos.put(enemigoActual, probabilidadEnemigo);         
-            posiblesCasillasCamino.clear();
-        }
-        
-        /* Obtener la probabilidad de que no se cruce ningun enemigo en el camino
-        (1 - probabilidadInidividual) y realizar la multiplicacion de estas para
-        obtener la interseccion.
-        La probabilidadTotal sera 1 - probabilidadAcumulada (la probabilidad de 
-        que no haya ningun enemigo por el camino)
-        */
-        if (numEnemigosCamino > 0) {
-            for (double probabilidadInidividual: probabilidadesEnemigos.values()) {
-                probabilidadAcumulada *= 1.0 - probabilidadInidividual;
-            }
-            
-            probabilidadTotal = 1.0 - probabilidadAcumulada;
-        }
-        
-        return probabilidadTotal;
-    }
-    
-    private StateObservation simulateActions(StateObservation stateObs, LinkedList<Types.ACTIONS> actions) {
-        StateObservation newState = stateObs.copy();
-
-        for (Types.ACTIONS action: actions) {
-            newState.advance(action);
-        }
-
-        return newState;
     }
 
     private int getHeuristicGems(Observation start, Observation goal, ArrayList<Observation> gems) {

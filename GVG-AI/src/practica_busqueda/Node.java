@@ -101,20 +101,6 @@ class Node implements Comparable<Node>{
 
         // Add to the code the remaining number of gems
         stringCode += listaGemas.size();
-/*
-        // Sum x and y position of all the boulders
-        int boulderSumX = 0, boulderSumY = 0;
-
-        for (Observation boulder: listaRocas) {
-            boulderSumX += boulder.getX();
-            boulderSumY += boulder.getY();
-        }
-
-        int boulderSum = (boulderSumX + boulderSumY) / 13;
-
-        stringCode += boulderSum;*/
-
-       // System.out.println(stringCode);
 
         // Parse the String code and return it
         int integerCode = Integer.parseInt(stringCode);

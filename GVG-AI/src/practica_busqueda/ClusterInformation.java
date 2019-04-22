@@ -156,14 +156,7 @@ public class ClusterInformation {
                     if (cluster_repetido)
                         sol_act[pos_act]++; // Ya estaba escogido ese clúster: cojo el siguiente
                 } while(cluster_repetido);
-                
-                System.out.println("\n\n");
-                for (int i = 0; i <= pos_act; i++)
-                    System.out.print(sol_act[i] + " ");
-                System.out.println();
-                
-                
-                
+
                 // La solución cumple las restricciones (clústeres no repetidos)
 
                 // Veo si ya he agotado todos los posibles clústeres para esta posición -> hago backtracking
@@ -173,7 +166,6 @@ public class ClusterInformation {
                         busqueda_terminada = true;
                     }
                     else{ // Solo se han agotado las posibilidades para esta posición -> hago backtracking
-                        System.out.println("backtracking 1");
                         sol_act[pos_act] = -1;
                         pos_act--;
                     }
@@ -192,9 +184,6 @@ public class ClusterInformation {
                     }
                     dist_act += dist_sumada;
 
-                    System.out.println("num_gems_sol: " + num_gems_sol);
-                    
-                    
                     // Compruebo si la solución puede ser mejor que la encontrada hasta la fecha
 
                     if (dist_act >= dist_mejor_sol){ // Si se cumple, ya no tiene sentido seguir -> se desecha la solución (se hace backtracking)
@@ -203,7 +192,6 @@ public class ClusterInformation {
                             dist_act -= dist_sumada;
                             num_gems_sol -= num_gems_cluster[sol_act[pos_act]];
                             sol_act[pos_act] = -1;
-                            System.out.println("backtracking 2");
                             pos_act--;
                         }
                     }
@@ -226,7 +214,6 @@ public class ClusterInformation {
                             if (pos_act != 0){
                                 dist_act -= dist_sumada;
                                 num_gems_sol -= num_gems_cluster[sol_act[pos_act]];
-                                System.out.println("backtracking 3");
                                 sol_act[pos_act] = -1;
                                 pos_act--;
                             }
@@ -242,23 +229,16 @@ public class ClusterInformation {
                         }
                         
                     }
-                    
-                    for (int i = 0; i <= pos_act; i++)
-                        System.out.print(sol_act[i] + " ");
+
                 }
             }
-            
-            System.out.println("\n--Búsqueda terminada--");
-            System.out.println("Mejor solución:");
-            
-            
+  
             // Guardo la mejor solución encontrada por el algoritmo en el atributo circuito      
             circuito = new ArrayList<>();
             
             for (int i = 0; i < num_clusters; i++)
                 if (mejor_sol[i] != -1){
                     circuito.add(new Integer(mejor_sol[i]));
-                    System.out.print(mejor_sol[i] + " ");
                 }
         }
     }
