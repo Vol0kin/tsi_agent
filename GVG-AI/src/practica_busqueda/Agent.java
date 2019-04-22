@@ -231,7 +231,8 @@ public class Agent extends BaseAgent{
                 // Elimino de esas gemas las del cluster al que no se puede llegar
                 gemas_actuales.removeAll(gemas_no_accesibles);
                 
-                if (gemas_actuales.size() == 0){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
+                if (gemas_actuales.size() < this.getRemainingGems(stateObs)){ // Si no hay suficientes clusters, quito las restricciones
+                    System.out.println("------------------- SE HA DADO ----------------------------");
                     ignorar_cas_prob_clusters = true; // Ya no tengo en cuenta las casillas prohibidas 
                     casillas_prohibidas.clear();
                     
@@ -254,6 +255,7 @@ public class Agent extends BaseAgent{
                 // NUEVO
                 
                 System.out.println("NUEVO");
+                    System.out.println("gemas que quedan: " + this.getRemainingGems(stateObs));
                     System.out.println("num clusters: " + clusterInf.getNumClusters());
                     System.out.println("Clusters existentes:");
                             
@@ -369,7 +371,7 @@ public class Agent extends BaseAgent{
                     // Elimino de esas gemas las del cluster al que no se puede llegar
                     gemas_actuales.removeAll(gemas_no_accesibles);
 
-                    if (gemas_actuales.size() == 0){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
+                    if (gemas_actuales.size() < this.getRemainingGems(stateObs)){ // Si no se puede llegar a ningún clúster, vuelvo a intentarlo con el primero
                         ignorar_cas_prob_clusters = true; // Ya no tengo en cuenta las casillas prohibidas 
                         casillas_prohibidas.clear();
 
@@ -2887,7 +2889,7 @@ public class Agent extends BaseAgent{
             distClusterStart[i] = getHeuristicDistance(gem_start.getX(), gem_start.getY(), xStart, yStart);
             distClusterGoal[i] = getHeuristicDistance(gem_goal.getX(), gem_goal.getY(), xGoal, yGoal);
         }
-        
+
         // Llamo al método createCircuit de clusterInformation
         clust_inf.createCircuit(xStart, yStart, xGoal, yGoal, distClusterStart, distClusterGoal, needed_gems);
     }
