@@ -107,6 +107,7 @@ public class ClusterInformation {
         int num_clusters = clusters.size();
         
         if (num_clusters == 1){ // Si solo hay un clúster, no tiene sentido usar el algoritmo
+            circuito = new ArrayList<>();
             circuito.add(0);
         }
         else{   
@@ -141,7 +142,6 @@ public class ClusterInformation {
                         dist_act -= matriz_dist[sol_act[pos_act-1]][sol_act[pos_act]] + dificultad_cluster[sol_act[pos_act]]; // En otro caso, le sumo la distancia entre este clúster elegido y el anteriormente elegido y la dificultad del clúster escogido
                     }
                 }
-                
                 sol_act[pos_act]++; // Escojo el siguiente clúster
 
                 // Escojo el primer clúster que no hubiera sido escogido ya
@@ -156,7 +156,7 @@ public class ClusterInformation {
                     if (cluster_repetido)
                         sol_act[pos_act]++; // Ya estaba escogido ese clúster: cojo el siguiente
                 } while(cluster_repetido);
-
+                
                 // La solución cumple las restricciones (clústeres no repetidos)
 
                 // Veo si ya he agotado todos los posibles clústeres para esta posición -> hago backtracking
@@ -187,14 +187,13 @@ public class ClusterInformation {
                     // Compruebo si la solución puede ser mejor que la encontrada hasta la fecha
 
                     if (dist_act >= dist_mejor_sol){ // Si se cumple, ya no tiene sentido seguir -> se desecha la solución (se hace backtracking)
-                        dist_act -= dist_sumada;
-                        num_gems_sol -= num_gems_cluster[sol_act[pos_act]];
-                        sol_act[pos_act] = -1;
-                        
-                        if (pos_act != 0)
+
+                        if (pos_act != 0){
+                            dist_act -= dist_sumada;
+                            num_gems_sol -= num_gems_cluster[sol_act[pos_act]];
+                            sol_act[pos_act] = -1;
                             pos_act--;
-                        else
-                            busqueda_terminada = true;
+                        }
                     }
                     else{
                         // Compruebo si he conseguido un número suficiente de gemas para abandonar el nivel

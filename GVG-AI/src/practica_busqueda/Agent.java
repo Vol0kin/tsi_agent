@@ -110,7 +110,7 @@ public class Agent extends BaseAgent{
         Observation salida = this.getExit(so);
         ArrayList<Observation> casillas_prohibidas = this.getCasillasProhibidas(so);
                 
-        if (it == 0){ // planifico para acercarme al primer clúster     
+        // planifico para acercarme al primer clúster     
             clusterInf.createClusters(3, this.getGemsList(so),
                     this.getBouldersList(so), this.getWallsList(so),
                     this.getBatsList(so), this.getScorpionsList(so)); // Creo los clusters
@@ -120,8 +120,8 @@ public class Agent extends BaseAgent{
             jugador.getY(), salida.getX(),
             salida.getY(), this.getRemainingGems(so)); // Creo el camino a través de los clústeres
             
-            for (Cluster cluster : clusterInf.clusters)
-                System.out.println(cluster.getGems());
+            //for (Cluster cluster : clusterInf.clusters)
+                //System.out.println(cluster.getGems());
             
             gems_search = clusterInf.getGemsCircuitCluster(0); // Cojo las gemas del clúster 1 del circuito
             
@@ -147,11 +147,6 @@ public class Agent extends BaseAgent{
             else
                 informacionPlan = pathExplorer(so, gems_search,
                                          elapsedTimer, 1, casillas_prohibidas);
-            
-            
-            
-            System.out.println("Final it 0");
-        }
     }
     
     @Override
@@ -190,7 +185,7 @@ public class Agent extends BaseAgent{
         
         // Si tengo 9 gemas, planifico para abandonar el nivel
         if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT && !abandonando_nivel){
-            System.out.println("Voy a abandonar el nivel - x: " + this.getPlayer(stateObs).getX() + " y: " + this.getPlayer(stateObs).getY() + " or: " + this.getPlayer(stateObs).getOrientation());
+            //System.out.println("Voy a abandonar el nivel - x: " + this.getPlayer(stateObs).getX() + " y: " + this.getPlayer(stateObs).getY() + " or: " + this.getPlayer(stateObs).getOrientation());
             abandonando_nivel = true;
             
             Observation level_exit = this.getExit(stateObs);
@@ -211,7 +206,7 @@ public class Agent extends BaseAgent{
         if (!hay_que_replanificar && it != 0 && !informacionPlan.searchComplete) { // Si no ha encontrado camino, sigo buscando
             informacionPlan = pathExplorer(x_search, y_search,
                     stateObs, gems_search,
-                    elapsedTimer, 6, casillas_prohibidas);
+                    elapsedTimer, 5, casillas_prohibidas);
         }
 
         
@@ -219,7 +214,7 @@ public class Agent extends BaseAgent{
         if (informacionPlan.searchComplete && !informacionPlan.existsPath){
             hay_que_replanificar = true;
             accion = Types.ACTIONS.ACTION_NIL;
-            System.out.println("No existe camino - it: " + it);
+            //System.out.println("No existe camino - it: " + it);
                 
             // Clúster -> no puedo coger ese clúster, lo elimino (le queden o no gemas) y vuelvo a crear otro circuito 
             if (this.getNumGems(stateObs) < NUM_GEMS_FOR_EXIT){
@@ -239,6 +234,7 @@ public class Agent extends BaseAgent{
                     gemas_actuales = this.getGemsList(stateObs);
                 }
                 
+                clusterInf = new ClusterInformation();
                 clusterInf.createClusters(3, gemas_actuales,
                 this.getBouldersList(stateObs), this.getWallsList(stateObs),
                 this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
@@ -290,7 +286,7 @@ public class Agent extends BaseAgent{
 
                         informacionPlan = pathExplorer(x_search, y_search,
                                                  stateObs, gems_search,
-                                                 elapsedTimer, 6, casillas_prohibidas);
+                                                 elapsedTimer, 5, casillas_prohibidas);
 
                         if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                             accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -323,6 +319,7 @@ public class Agent extends BaseAgent{
                         gemas_actuales = this.getGemsList(stateObs);
                     }
 
+                    clusterInf = new ClusterInformation();
                     clusterInf.createClusters(3, gemas_actuales,
                     this.getBouldersList(stateObs), this.getWallsList(stateObs),
                     this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
@@ -346,7 +343,7 @@ public class Agent extends BaseAgent{
 
                     informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 6, casillas_prohibidas);
+                                             elapsedTimer, 5, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -363,14 +360,15 @@ public class Agent extends BaseAgent{
         if (informacionPlan.searchComplete){ // Ya ha terminado la planificación
             
             if (informacionPlan.plan.isEmpty()) { // Si he acabado de ejecutar el plan, planifico para el clúster siguiente
-                System.out.println("Plan vacío - searchComplete = true - existsPath = " + informacionPlan.existsPath);
-                System.out.println(informacionPlan.plan);
+                //System.out.println("Plan vacío - searchComplete = true - existsPath = " + informacionPlan.existsPath);
+                //System.out.println(informacionPlan.plan);
                 
                 if (sig_cluster+1 >= clusterInf.circuito.size()){ // Me daría outOfBounds exception porque ya no hay ningún clúster más del circuito
                     hay_que_replanificar = true;
                     
                     if(this.getNumGems(stateObs) < NUM_GEMS_FOR_EXIT){
                         // Vuelvo a crear los clusters
+                        clusterInf = new ClusterInformation();
                         clusterInf.createClusters(3, this.getGemsList(stateObs),
                         this.getBouldersList(stateObs), this.getWallsList(stateObs),
                         this.getBatsList(stateObs), this.getScorpionsList(stateObs)); // Creo los clusters
@@ -407,10 +405,10 @@ public class Agent extends BaseAgent{
                     if (x_search != -1 && y_search != -1) // Veo si existe una casilla intermedia válida
                         informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
-                                             elapsedTimer, 6, casillas_prohibidas);
+                                             elapsedTimer, 5, casillas_prohibidas);
                     else // Si no, le dejo que termine en cualquier gema
                         informacionPlan = pathExplorer(stateObs, gems_search,
-                                             elapsedTimer, 6, casillas_prohibidas);
+                                             elapsedTimer, 5, casillas_prohibidas);
 
                     if (informacionPlan.searchComplete){ // Veo si ha terminado la planificación en el mismo turno
                         accion = informacionPlan.plan.peekFirst(); // No la borro por si no se ejecuta después
@@ -441,12 +439,12 @@ public class Agent extends BaseAgent{
         ArrayList<Observation> scorpions = this.getScorpionsList(stateObs);
         
         for (Observation bat : bats){
-            if (jugador.getManhattanDistance(bat) <= 6)
+            if (this.getHeuristicDistance(jugador, bat) <= 6)
                 enemigos.add(bat);
         }
         
         for (Observation scorpion : scorpions){
-            if (jugador.getManhattanDistance(scorpion) <= 6)
+            if (this.getHeuristicDistance(jugador, scorpion) <= 6)
                 enemigos.add(scorpion);
         }
                 
@@ -468,12 +466,13 @@ public class Agent extends BaseAgent{
                     enemigos_cercanos = true;
                 }
                 
-                System.out.println("Enemigo " + enemigos.get(i) + " conectado!");
+                //System.out.println("Enemigo " + enemigos.get(i) + " conectado!");
             }
         }
                
         if (enemigos_cercanos){ // La siguiente accion pone al jugador en peligro -> veo si hay alguna acción mejor
-            System.out.println("ENEMIGOS CERCANOS");
+            //System.out.println("ENEMIGOS CERCANOS");
+            long t1 = elapsedTimer.elapsedMillis();
             
             // Casillas posibles a la que ir -> arriba, abajo, derecha o izquierda
             
@@ -589,7 +588,7 @@ public class Agent extends BaseAgent{
                         }
                         else{ // Abajo
                            jugador_connection = new PlayerObservation(jug_x, jug_y, Orientation.S);
-                           jugador_tras_accion = new PlayerObservation(jug_x+1, jug_y+1, Orientation.S);
+                           jugador_tras_accion = new PlayerObservation(jug_x, jug_y+1, Orientation.S);
                            accion_connection = Types.ACTIONS.ACTION_DOWN; 
                         }
                     }
@@ -600,8 +599,11 @@ public class Agent extends BaseAgent{
                         caminos_conectados = connectionToEnemy(stateObs, accion_connection, enemigo, jugador_connection);
 
                         if (caminos_conectados){ // El camino del enemigo está conectado al del jugador
-                            if (jugador_tras_accion != null)
+                            if (jugador_tras_accion != null && !jugador_tras_accion.hasDied()){
+                                System.out.println("jugador_tras_accion: " + jugador_tras_accion);
+                                System.out.println("enemigo: " + enemigo);
                                 this_dist = this.getHeuristicDistance(jugador_tras_accion, enemigo);
+                            }
                             else
                                 this_dist = 0;
                             
@@ -613,9 +615,9 @@ public class Agent extends BaseAgent{
                     dist_cas_enem[i] = min_dist;
                 }
                 
-                System.out.println("CASILLAS VALIDAS IT - " + it);
-                for (int i = 0; i < num_casillas_validas; i++)
-                    System.out.println(casillas_validas.get(i) + " - " + dist_cas_enem[i]);
+                //System.out.println("CASILLAS VALIDAS IT - " + it);
+                //for (int i = 0; i < num_casillas_validas; i++)
+                    //System.out.println(casillas_validas.get(i) + " - " + dist_cas_enem[i]);
                 
                 
                 // Si hay casillas con dist_cas_enem > 4, escojo la más cercana al objetivo
@@ -712,7 +714,7 @@ public class Agent extends BaseAgent{
                 
                 casillas_huir_enemigos.add(obs_guardar);
                 
-                System.out.println("ACCIONES PARA CASILLA: " + plan_no_morir.get(0));
+                //System.out.println("ACCIONES PARA CASILLA: " + plan_no_morir.get(0));
                 
                 
                 
@@ -720,6 +722,9 @@ public class Agent extends BaseAgent{
             else{ // Si no hay casillas válidas, no hago nada
                 enemigos_cercanos = false;
             }
+            
+            long t2 = elapsedTimer.elapsedMillis();
+            System.out.println("Tiempo parte enemigos: " + (t2-t1));
         }
         
         // Veo si el jugador va a morir en los siguientes 2 turnos. Si enemigos_cercanos = true,
@@ -772,9 +777,9 @@ public class Agent extends BaseAgent{
         
         
         if (condicion_ejec_parte_rocas){ // Va a morir y no es por un enemigo -> es por una roca
-            System.out.println("Va a morir! - it: " + it);
-            System.out.println(plan_usado.get(0));
-            System.out.println(accion);
+            //System.out.println("Va a morir! - it: " + it);
+            //System.out.println(plan_usado.get(0));
+            //System.out.println(accion);
             
             // Si va a morir ejecuto las acciones necesarias para sobrevivir y después vuelvo a la casilla donde estaba y sigo ejecutando el plan
             
@@ -807,7 +812,7 @@ public class Agent extends BaseAgent{
             }
             
             if (muerte_por_roca){ // Me va a aplastar una roca pero no hay enemigos cercanos -> me aparto de la roca sin preocuparme de los enemigos
-                System.out.println("MUERTE POR ROCA");
+                //System.out.println("MUERTE POR ROCA");
                 
                 StateObservation estado_prueba;
                 plan_no_morir.clear();
@@ -832,7 +837,7 @@ public class Agent extends BaseAgent{
                     
                     if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                         plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                        System.out.println("Me quedo quieto");
+                        //System.out.println("Me quedo quieto");
                     }
                 }
                 
@@ -857,7 +862,7 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                            System.out.println("Me muevo hacia la izquierda");
+                            //System.out.println("Me muevo hacia la izquierda");
                         }
                     }
                     else{ // Primero giro a la izquierda y después me muevo
@@ -877,7 +882,7 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_LEFT);
-                            System.out.println("Me muevo hacia la izquierda");
+                            //System.out.println("Me muevo hacia la izquierda");
                         }
                     }   
                 }
@@ -903,7 +908,7 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_NIL);
-                            System.out.println("Me muevo hacia la derecha");
+                           // System.out.println("Me muevo hacia la derecha");
                         }
                     }
                     else{ // Primero giro a la izquierda y después me muevo
@@ -923,14 +928,14 @@ public class Agent extends BaseAgent{
                         if (!va_a_morir){ // Si no muere, añado esas acciones al plan
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
                             plan_no_morir.add(Types.ACTIONS.ACTION_RIGHT);
-                            System.out.println("Me muevo hacia la derecha");
+                            //System.out.println("Me muevo hacia la derecha");
                         }
                     }   
                 }
                 
                 // Por último, si no ha funcionado nada, me muevo hacia abajo
                 if (plan_no_morir.isEmpty()){
-                    System.out.println("Me muevo hacia abajo");
+                    //System.out.println("Me muevo hacia abajo");
                     
                     estado_prueba = stateObs.copy();
                     estado_prueba.advance(Types.ACTIONS.ACTION_DOWN);
@@ -943,7 +948,7 @@ public class Agent extends BaseAgent{
             }
 
             hay_que_replanificar = true; // Cuando termine de ejecutar este plan, tendré que replanificar
-            System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
+            //System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
             it++;
             
             if (plan_no_morir.isEmpty())
@@ -977,7 +982,7 @@ public class Agent extends BaseAgent{
                 
                 
                 if (plan_invalido){ // Si el plan es inválido, este turno me quedo quieto y el siguiente replanifico
-                    System.out.println("Plan invalido");
+                    //System.out.println("Plan invalido");
                     ignorar_cas_prob_clusters = true;
                     ignorar_cas_prob_salida = true;
                     hay_que_replanificar = true;
@@ -1028,8 +1033,8 @@ public class Agent extends BaseAgent{
                 
                 
                 if (!hay_gema_o_tierra || !hay_roca){ // Si la acción no es para excavar, se ha chocado -> me quedo quieto
-                    System.out.println("Se ha chocado con una roca! - it: " + it);
-                    System.out.println("Accion aplazada: " + accion);
+                    //System.out.println("Se ha chocado con una roca! - it: " + it);
+                    //System.out.println("Accion aplazada: " + accion);
                     it++;
                     return Types.ACTIONS.ACTION_NIL; // Me quedo quieto y no ejecuto la acción del plan (la ejecutaré el siguiente turno si no vuelve a pasar)
                 }
@@ -2191,7 +2196,7 @@ public class Agent extends BaseAgent{
 
     private boolean connectionToEnemy(StateObservation stateObs, Types.ACTIONS action, Observation enemy, PlayerObservation player) {
 
-        if (player == null || action == null) // Si el jugador ha muerto tras aplicar la acción
+        if (player == null || action == null || player.hasDied()) // Si el jugador ha muerto tras aplicar la acción
             return true;
         
         
@@ -2276,7 +2281,7 @@ public class Agent extends BaseAgent{
 
             closedList.addFirst(currentNode);
         }
-        System.out.println(foundPlayer + " " + enemy + " " + player + " " + nextPlayerPos + " " + action);
+        //System.out.println(foundPlayer + " " + enemy + " " + player + " " + nextPlayerPos + " " + action);
 
 
         return foundPlayer;
