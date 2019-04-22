@@ -244,7 +244,23 @@ public class Agent extends BaseAgent{
                 jugador.getY(), salida.getX(),
                 salida.getY(), this.getRemainingGems(stateObs)); // Creo el camino a través de los clústeres
 
-                sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
+                sig_cluster = 0; // Vuelvo a empezar por el principio del circuito
+                
+                // NUEVO
+                int[] casilla_search;
+                gems_search = clusterInf.getGemsCircuitCluster(0);
+
+                if (1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
+                    casilla_search = this.getPuntoIntermedioClusters(gems_search,
+                        clusterInf.getGemsCircuitCluster(1), stateObs);
+
+                else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
+                    casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                        this.getExit(stateObs), stateObs);
+                }
+
+                x_search = casilla_search[0];
+                y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
             }
         }
         
@@ -332,14 +348,30 @@ public class Agent extends BaseAgent{
                     sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
                     
                     // Replanifico
-                    
+                    /*
                     int ind_circuito = clusterInf.circuito.get(0);
                     
                     if (ind_circuito >= clusterInf.clusters.size())
                         ind_circuito = 0;
                     
                     Cluster this_cluster = clusterInf.clusters.get(ind_circuito);
-                    gems_search = this_cluster.getGems();
+                    gems_search = this_cluster.getGems();*/
+                    
+                    // NUEVO
+                    int[] casilla_search;
+                    gems_search = clusterInf.getGemsCircuitCluster(0);
+
+                    if (1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
+                        casilla_search = this.getPuntoIntermedioClusters(gems_search,
+                            clusterInf.getGemsCircuitCluster(1), stateObs);
+
+                    else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
+                        casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                            this.getExit(stateObs), stateObs);
+                    }
+
+                    x_search = casilla_search[0];
+                    y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
 
                     informacionPlan = pathExplorer(x_search, y_search,
                                              stateObs, gems_search,
@@ -378,7 +410,23 @@ public class Agent extends BaseAgent{
                         jugador.getY(), salida.getX(),
                         salida.getY(), this.getRemainingGems(stateObs)); // Creo el camino a través de los clústeres
 
-                        sig_cluster = 0; // Vuelvo a empezar por el principio del circuito 
+                        sig_cluster = 0; // Vuelvo a empezar por el principio del circuito
+                        
+                        // NUEVO
+                        int[] casilla_search;
+                        gems_search = clusterInf.getGemsCircuitCluster(0);
+
+                        if (1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
+                            casilla_search = this.getPuntoIntermedioClusters(gems_search,
+                                clusterInf.getGemsCircuitCluster(1), stateObs);
+
+                        else{ // Si no, cojo el punto intermedio entre este clúster y la salida (es el último clúster) 
+                            casilla_search = this.getPuntoIntermedioClusterSalida(gems_search,
+                                this.getExit(stateObs), stateObs);
+                        }
+
+                        x_search = casilla_search[0];
+                        y_search = casilla_search[1]; // --> Se puede escoger como punto final una gema!!
                     }
                     
                     accion = Types.ACTIONS.ACTION_NIL;
