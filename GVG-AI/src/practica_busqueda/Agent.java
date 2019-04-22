@@ -67,6 +67,9 @@ public class Agent extends BaseAgent{
     
     private HashSet<Observation> casillas_huir_enemigos = new HashSet<>(); // Casillas donde se encontraba el jugador cuando tuvo que huir de los enemigos
     
+    private boolean bucle_2_abandonar_nivel = false;
+    private Observation casilla_prob_bucle_2;
+    
     public Agent(StateObservation so, ElapsedCpuTimer elapsedTimer){
         super(so, elapsedTimer);
         
@@ -182,6 +185,8 @@ public class Agent extends BaseAgent{
             System.out.println("Ejecutando acción para no morir: " + plan_no_morir.peekFirst());
             return plan_no_morir.pollFirst();
         }
+        else
+            System.out.println("Primera acción plan normal: " + informacionPlan.plan.peekFirst());
         
         // Si tengo 9 gemas, planifico para abandonar el nivel
         if (this.getNumGems(stateObs) >= NUM_GEMS_FOR_EXIT && !abandonando_nivel){
@@ -247,6 +252,17 @@ public class Agent extends BaseAgent{
                 sig_cluster = 0; // Vuelvo a empezar por el principio del circuito
                 
                 // NUEVO
+                
+                System.out.println("NUEVO");
+                    System.out.println("num clusters: " + clusterInf.getNumClusters());
+                    System.out.println("Clusters existentes:");
+                            
+                    for (Cluster cluster : clusterInf.clusters)
+                        System.out.println(cluster.getGems());
+                            
+                    System.out.println("Tam circuito: " + clusterInf.circuito.size());
+                    System.out.println("cluster 0 circuito: " + clusterInf.circuito.get(0));
+                
                 int[] casilla_search;
                 gems_search = clusterInf.getGemsCircuitCluster(0);
 
@@ -278,8 +294,35 @@ public class Agent extends BaseAgent{
                 if (!en_bucle_enemigos)
                     informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, casillas_prohibidas_exit);
                 else{
-                    informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1); // Si estoy en bucle, ignoro los enemigos
-                    ignorar_cas_prob_salida = true;
+                    
+                    if (!bucle_2_abandonar_nivel){
+                        informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1); // Si estoy en bucle, ignoro los enemigos
+                        ignorar_cas_prob_salida = true;
+                        bucle_2_abandonar_nivel = true;
+                        //System.out.println("Aqui - accion: " + informacionPlan.plan.get(0));
+                        
+                        // Añado la casilla prohibida dada por la primera acción de este plan
+                        Types.ACTIONS accion_bucle_2 = informacionPlan.plan.get(0);
+                        ArrayList<Observation> [][] grid = this.getObservationGrid(stateObs);
+                        
+                        if (accion_bucle_2 == Types.ACTIONS.ACTION_UP)
+                            casilla_prob_bucle_2 = new Observation(jugador.getX(), jugador.getY()-1, grid[jugador.getX()][jugador.getY()-1].get(0).getType());
+                        else if (accion_bucle_2 == Types.ACTIONS.ACTION_DOWN)
+                            casilla_prob_bucle_2 = new Observation(jugador.getX(), jugador.getY()+1, grid[jugador.getX()][jugador.getY()+1].get(0).getType());
+                        else if (accion_bucle_2 == Types.ACTIONS.ACTION_RIGHT)
+                            casilla_prob_bucle_2 = new Observation(jugador.getX()+1, jugador.getY(), grid[jugador.getX()+1][jugador.getY()].get(0).getType());
+                        else if (accion_bucle_2 == Types.ACTIONS.ACTION_LEFT)
+                            casilla_prob_bucle_2 = new Observation(jugador.getX()-1, jugador.getY(), grid[jugador.getX()-1][jugador.getY()].get(0).getType());
+                        else
+                            casilla_prob_bucle_2 = new Observation(0, 0, ObservationType.WALL); // Por si acaso, aunque este caso no se debería dar
+                         
+                    }
+                    else{ // No es suficiente para salir del bucle el ignorar los enemigos -> sigo repitiendo el mismo camino inválido hacia la salida
+                        ArrayList<Observation> array_casilla_prob = new ArrayList<>();
+                        array_casilla_prob.add(casilla_prob_bucle_2);
+                        informacionPlan = pathExplorer(salida_nivel.getX(), salida_nivel.getY(), stateObs, elapsedTimer, (long) 1, array_casilla_prob);
+                        bucle_2_abandonar_nivel = false;
+                    }
                 }
             }
             
@@ -318,7 +361,6 @@ public class Agent extends BaseAgent{
                     }
                 }  
                 else{ // Estoy en bucle -> vuelvo a crear los clusters pero no puedo ir a ese
-                    
                     // Vuelvo a crear toda la información de los clústeres desde el principio (no tarda mucho (en el nivel 1 tarda 5 ms como mucho))
                     ArrayList<Observation> gemas_actuales = this.getGemsList(stateObs);
 
@@ -359,6 +401,10 @@ public class Agent extends BaseAgent{
                     
                     // NUEVO
                     int[] casilla_search;
+                    System.out.println("NUEVO");
+                    System.out.println("num clusters: " + clusterInf.getNumClusters());
+                    System.out.println("Tam circuito: " + clusterInf.circuito.size());
+                    System.out.println("cluster 0 circuito: " + clusterInf.circuito.get(0));
                     gems_search = clusterInf.getGemsCircuitCluster(0);
 
                     if (1 < clusterInf.circuito.size()) // Compruebo si después de este clúster queda otro
@@ -519,8 +565,7 @@ public class Agent extends BaseAgent{
         }
                
         if (enemigos_cercanos){ // La siguiente accion pone al jugador en peligro -> veo si hay alguna acción mejor
-            //System.out.println("ENEMIGOS CERCANOS");
-            long t1 = elapsedTimer.elapsedMillis();
+            System.out.println("ENEMIGOS CERCANOS");
             
             // Casillas posibles a la que ir -> arriba, abajo, derecha o izquierda
             
@@ -648,8 +693,6 @@ public class Agent extends BaseAgent{
 
                         if (caminos_conectados){ // El camino del enemigo está conectado al del jugador
                             if (jugador_tras_accion != null && !jugador_tras_accion.hasDied()){
-                                System.out.println("jugador_tras_accion: " + jugador_tras_accion);
-                                System.out.println("enemigo: " + enemigo);
                                 this_dist = this.getHeuristicDistance(jugador_tras_accion, enemigo);
                             }
                             else
@@ -754,6 +797,7 @@ public class Agent extends BaseAgent{
                 Observation obs_guardar = new Observation(jug_x, jug_y, ObservationType.EMPTY);
                 
                 if(casillas_huir_enemigos.contains(obs_guardar)){
+                    System.out.println("EN BUCLE --");
                     en_bucle_enemigos = true;
                 }
                 else{
@@ -770,9 +814,7 @@ public class Agent extends BaseAgent{
             else{ // Si no hay casillas válidas, no hago nada
                 enemigos_cercanos = false;
             }
-            
-            long t2 = elapsedTimer.elapsedMillis();
-            System.out.println("Tiempo parte enemigos: " + (t2-t1));
+
         }
         
         // Veo si el jugador va a morir en los siguientes 2 turnos. Si enemigos_cercanos = true,
@@ -1030,7 +1072,7 @@ public class Agent extends BaseAgent{
                 
                 
                 if (plan_invalido){ // Si el plan es inválido, este turno me quedo quieto y el siguiente replanifico
-                    //System.out.println("Plan invalido");
+                    System.out.println("Plan invalido");
                     ignorar_cas_prob_clusters = true;
                     ignorar_cas_prob_salida = true;
                     hay_que_replanificar = true;
@@ -3260,7 +3302,7 @@ public class Agent extends BaseAgent{
         for (int this_x = 0; this_x < ancho; this_x++)
             for (int this_y = 0; this_y < alto; this_y++){
                 if (matrix_cas_prob[this_x][this_y] == true)
-                    casillas_prohibidas.add(new Observation(this_x, this_y, ObservationType.WALL));
+                    casillas_prohibidas.add(new Observation(this_x, this_y, grid[this_x][this_y].get(0).getType()));
             }
         
         return casillas_prohibidas;
